@@ -371,7 +371,7 @@
 
 <!-- ── Project Modal ──────────────────────────────────── -->
 <div class="modal-overlay" id="projectModal">
-  <div class="modal-container modal-sm">
+  <div class="modal-container modal-project">
     <div class="modal-header">
       <h2 class="modal-title" id="projectModalTitle">New Project</h2>
       <button class="modal-close" id="projectModalClose" title="Close">
@@ -380,16 +380,45 @@
     </div>
     <div class="modal-body">
       <div class="modal-field">
+        <label class="modal-label">Template</label>
+        <div class="template-picker" id="templatePicker">
+          <button class="template-card active" data-template="basic-kanban" type="button">
+            <div class="template-card-icon">📋</div>
+            <div class="template-card-info">
+              <div class="template-card-name">Basic Kanban</div>
+              <div class="template-card-desc">Backlog → In Progress → Done</div>
+            </div>
+          </button>
+          <button class="template-card" data-template="daily-checks" type="button">
+            <div class="template-card-icon">✅</div>
+            <div class="template-card-info">
+              <div class="template-card-name">Daily Checks</div>
+              <div class="template-card-desc">Backlog → Today → In Progress → Completed</div>
+            </div>
+          </button>
+          <button class="template-card" data-template="software-project" type="button">
+            <div class="template-card-icon">💻</div>
+            <div class="template-card-info">
+              <div class="template-card-name">Software Project</div>
+              <div class="template-card-desc">Backlog → In Progress → Review → Testing → Hot-fix → Done</div>
+            </div>
+          </button>
+        </div>
+      </div>
+      <div class="modal-field">
         <label class="modal-label">Project Name</label>
         <input class="modal-input" type="text" id="projectModalName" placeholder="e.g. Mobile App" />
       </div>
       <div class="modal-field">
         <label class="modal-label">Color</label>
         <div class="color-picker" id="colorPicker">
-          <button class="color-swatch orange active" data-color="orange" title="Orange"></button>
-          <button class="color-swatch blue" data-color="blue" title="Blue"></button>
-          <button class="color-swatch green" data-color="green" title="Green"></button>
-          <button class="color-swatch purple" data-color="purple" title="Purple"></button>
+          <button class="color-swatch orange active" data-color="orange" title="Orange" type="button"></button>
+          <button class="color-swatch blue" data-color="blue" title="Blue" type="button"></button>
+          <button class="color-swatch green" data-color="green" title="Green" type="button"></button>
+          <button class="color-swatch purple" data-color="purple" title="Purple" type="button"></button>
+          <label class="color-swatch-custom" title="Custom color">
+            <input type="color" class="color-custom-input" id="colorCustomInput" value="#6366f1" />
+          </label>
         </div>
       </div>
     </div>

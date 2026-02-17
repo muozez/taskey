@@ -3,6 +3,11 @@ const projectData = {
   'website-redesign': {
     name: 'Website Redesign',
     color: 'orange',
+    columns: [
+      { id: 'in-progress', label: 'In Progress' },
+      { id: 'review', label: 'Review' },
+      { id: 'done', label: 'Done', isDone: true }
+    ],
     backlog: [
       { id: 'wr-1', title: 'Update Brand Guidelines for 2024', desc: 'Ensure all typography and color variables match the new design system.', priority: 'high', avatar: 'J', avatarColor: 'orange', dueDate: '2026-02-28', dueTime: '17:00', duration: '4h', progress: 0, tags: ['design', 'branding'], checklist: [{text: 'Review typography', done: true}, {text: 'Update color tokens', done: false}], createdAt: '2026-02-10T09:00:00' },
       { id: 'wr-2', title: 'API Documentation Review', desc: '', priority: 'medium', avatar: 'S', avatarColor: 'green', dueDate: '2026-03-05', dueTime: '', duration: '2h', progress: 0, tags: ['docs'], checklist: [], createdAt: '2026-02-12T14:30:00' },
@@ -21,6 +26,11 @@ const projectData = {
   'q4-strategy': {
     name: 'Q4 Strategy',
     color: 'blue',
+    columns: [
+      { id: 'in-progress', label: 'In Progress' },
+      { id: 'review', label: 'Review' },
+      { id: 'done', label: 'Done', isDone: true }
+    ],
     backlog: [
       { id: 'q4-1', title: 'Competitive Analysis Report', desc: 'Analyze top 5 competitors and market positioning.', priority: 'high', avatar: 'A', avatarColor: 'blue', dueDate: '2026-03-01', dueTime: '', duration: '1d', progress: 0, tags: ['research'], checklist: [], createdAt: '2026-02-11T10:00:00' },
       { id: 'q4-2', title: 'Budget Allocation Draft', desc: '', priority: 'medium', avatar: 'M', avatarColor: 'green', dueDate: '2026-03-10', dueTime: '', duration: '4h', progress: 0, tags: ['finance'], checklist: [], createdAt: '2026-02-13T09:00:00' },
@@ -36,6 +46,11 @@ const projectData = {
   'brand-guidelines': {
     name: 'Brand Guidelines',
     color: 'purple',
+    columns: [
+      { id: 'in-progress', label: 'In Progress' },
+      { id: 'review', label: 'Review' },
+      { id: 'done', label: 'Done', isDone: true }
+    ],
     backlog: [
       { id: 'bg-1', title: 'Color Palette Refresh', desc: 'Update primary and secondary color palettes.', priority: 'medium', avatar: 'J', avatarColor: 'purple', dueDate: '2026-03-15', dueTime: '', duration: '2h', progress: 0, tags: ['design'], checklist: [], createdAt: '2026-02-14T10:00:00' },
     ],
@@ -53,6 +68,63 @@ let currentProject = 'website-redesign';
 let currentView = 'dashboard'; // 'dashboard' or 'project'
 let currentDashFilter = 'today';
 let taskIdCounter = 100;
+
+// ── Project Templates ─────────────────────────────────
+const projectTemplates = {
+  'basic-kanban': {
+    label: 'Basic Kanban',
+    columns: [
+      { id: 'in-progress', label: 'In Progress' },
+      { id: 'done', label: 'Done', isDone: true }
+    ]
+  },
+  'daily-checks': {
+    label: 'Daily Checks',
+    columns: [
+      { id: 'today', label: 'Today' },
+      { id: 'in-progress', label: 'In Progress' },
+      { id: 'completed', label: 'Completed', isDone: true }
+    ]
+  },
+  'software-project': {
+    label: 'Software Project',
+    columns: [
+      { id: 'in-progress', label: 'In Progress' },
+      { id: 'review', label: 'Code Review' },
+      { id: 'testing', label: 'Testing' },
+      { id: 'hot-fix', label: 'Hot-fix' },
+      { id: 'done', label: 'Done', isDone: true }
+    ]
+  }
+};
+
+// ── Color Utilities ───────────────────────────────────
+const namedColors = {
+  'orange': '#fb923c',
+  'blue': '#60a5fa',
+  'green': '#22c55e',
+  'purple': '#a78bfa'
+};
+
+function getColorValue(color) {
+  return namedColors[color] || color;
+}
+
+function isNamedColor(color) {
+  return !!namedColors[color];
+}
+
+function colorStyle(color) {
+  return isNamedColor(color) ? '' : ` style="color: ${color}"`;
+}
+
+function colorClass(color) {
+  return isNamedColor(color) ? color : '';
+}
+
+function bgColorStyle(color) {
+  return isNamedColor(color) ? '' : ` style="background: ${color}"`;
+}
 
 // ── DOM References ────────────────────────────────────
 const backlogCards = document.getElementById('backlogCards');
@@ -82,6 +154,8 @@ const projectModalName = document.getElementById('projectModalName');
 const colorPicker = document.getElementById('colorPicker');
 const projectModalCancel = document.getElementById('projectModalCancel');
 const projectModalSave = document.getElementById('projectModalSave');
+const templatePicker = document.getElementById('templatePicker');
+const colorCustomInput = document.getElementById('colorCustomInput');
 
 // Modal refs
 const taskModal = document.getElementById('taskModal');
@@ -116,10 +190,20 @@ function generateId() {
   return 'task-' + (++taskIdCounter);
 }
 
+function getProjectStatuses(project) {
+  return ['backlog', ...project.columns.map(c => c.id)];
+}
+
+function isColumnDone(project, status) {
+  const col = project.columns.find(c => c.id === status);
+  return col && col.isDone;
+}
+
 function findTask(taskId) {
   const project = projectData[currentProject];
-  const statuses = ['backlog', 'in-progress', 'review', 'done'];
+  const statuses = getProjectStatuses(project);
   for (const status of statuses) {
+    if (!project[status]) continue;
     const idx = project[status].findIndex(t => t.id === taskId);
     if (idx !== -1) return { task: project[status][idx], status, index: idx };
   }
@@ -280,30 +364,29 @@ function renderBacklog() {
 
 function renderKanban() {
   const project = projectData[currentProject];
-  const statuses = ['in-progress', 'review', 'done'];
-  const statusLabels = { 'in-progress': 'In Progress', 'review': 'Review', 'done': 'Done' };
-  const countClasses = { 'in-progress': 'primary', 'review': '', 'done': 'green' };
 
   kanbanColumns.innerHTML = '';
 
-  statuses.forEach(status => {
-    const tasks = project[status];
-    const isDone = status === 'done';
+  project.columns.forEach(colDef => {
+    const tasks = project[colDef.id] || [];
+    const isDone = !!colDef.isDone;
 
     const col = document.createElement('div');
     col.className = 'kanban-column';
-    col.dataset.column = status;
+    col.dataset.column = colDef.id;
+
+    const countClass = isDone ? 'green' : (colDef.id === 'in-progress' ? 'primary' : '');
 
     col.innerHTML = `
       <div class="column-header">
-        <h3 class="column-title">${statusLabels[status]} <span class="column-count ${countClasses[status]}">${tasks.length}</span></h3>
-        <button class="column-more">···</button>
+        <h3 class="column-title">${colDef.label} <span class="column-count ${countClass}">${tasks.length}</span></h3>
+        <button class="column-more" data-column-id="${colDef.id}">···</button>
       </div>
     `;
 
     const cardsContainer = document.createElement('div');
     cardsContainer.className = 'column-cards drop-zone' + (isDone ? ' done' : '');
-    cardsContainer.dataset.status = status;
+    cardsContainer.dataset.status = colDef.id;
 
     tasks.forEach(task => {
       cardsContainer.appendChild(createTaskCardHTML(task, isDone));
@@ -313,7 +396,20 @@ function renderKanban() {
     kanbanColumns.appendChild(col);
   });
 
+  // Add Column button
+  const addColEl = document.createElement('div');
+  addColEl.className = 'kanban-add-column';
+  addColEl.innerHTML = `
+    <button class="add-column-btn" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Column
+    </button>
+  `;
+  addColEl.querySelector('.add-column-btn').addEventListener('click', () => addColumn());
+  kanbanColumns.appendChild(addColEl);
+
   initDropZones();
+  initColumnMenus();
 }
 
 function renderProject(projectId) {
@@ -328,7 +424,13 @@ function renderProject(projectId) {
 
   // Update title bar
   projectTitleText.textContent = project.name;
-  projectTitleIcon.className = 'project-title-icon ' + project.color;
+  if (isNamedColor(project.color)) {
+    projectTitleIcon.className = 'project-title-icon ' + project.color;
+    projectTitleIcon.style.color = '';
+  } else {
+    projectTitleIcon.className = 'project-title-icon';
+    projectTitleIcon.style.color = project.color;
+  }
   document.querySelector('.topbar').style.display = '';
 
   // Update sidebar active state
@@ -348,6 +450,16 @@ function renderProject(projectId) {
 
 function openTaskModal(taskId) {
   const found = taskId ? findTask(taskId) : null;
+
+  // Populate status dropdown with project columns
+  const project = projectData[currentProject];
+  modalTaskStatus.innerHTML = '<option value="backlog">Backlog</option>';
+  project.columns.forEach(col => {
+    const opt = document.createElement('option');
+    opt.value = col.id;
+    opt.textContent = col.label;
+    modalTaskStatus.appendChild(opt);
+  });
 
   if (found) {
     editingTaskId = taskId;
@@ -438,7 +550,7 @@ function saveTask() {
 
     if (found.status !== newStatus) {
       project[found.status].splice(found.index, 1);
-      if (newStatus === 'done') found.task.progress = 100;
+      if (isColumnDone(project, newStatus)) found.task.progress = 100;
       project[newStatus].push(found.task);
     }
   } else {
@@ -452,7 +564,7 @@ function saveTask() {
       dueDate: modalTaskDueDate.value,
       dueTime: modalTaskDueTime.value,
       duration: modalTaskDuration.value,
-      progress: newStatus === 'done' ? 100 : progressVal,
+      progress: isColumnDone(project, newStatus) ? 100 : progressVal,
       tags: tags,
       checklist: currentChecklist.map(c => ({...c})),
       createdAt: new Date().toISOString(),
@@ -598,7 +710,11 @@ function moveTask(taskId, fromStatus, toStatus) {
   if (taskIndex === -1) return;
 
   const [task] = fromList.splice(taskIndex, 1);
-  if (toStatus === 'done') delete task.progress;
+  if (isColumnDone(project, toStatus)) {
+    task.progress = 100;
+  } else if (isColumnDone(project, fromStatus)) {
+    delete task.progress;
+  }
 
   project[toStatus].push(task);
 
@@ -665,9 +781,12 @@ function getAllTasks() {
   const tasks = [];
   for (const pid of Object.keys(projectData)) {
     const project = projectData[pid];
-    for (const status of ['backlog', 'in-progress', 'review', 'done']) {
+    const allStatuses = getProjectStatuses(project);
+    for (const status of allStatuses) {
+      if (!project[status]) continue;
       project[status].forEach(task => {
-        tasks.push({ ...task, projectId: pid, projectName: project.name, projectColor: project.color, status });
+        const isDone = isColumnDone(project, status);
+        tasks.push({ ...task, projectId: pid, projectName: project.name, projectColor: project.color, status, isDoneTask: isDone });
       });
     }
   }
@@ -698,19 +817,19 @@ function filterTasks(filter) {
 
   switch(filter) {
     case 'today':
-      return all.filter(t => t.dueDate === today && t.status !== 'done');
+      return all.filter(t => t.dueDate === today && !t.isDoneTask);
     case 'this-week': {
       return all.filter(t => {
-        if (!t.dueDate || t.status === 'done') return false;
+        if (!t.dueDate || t.isDoneTask) return false;
         const d = new Date(t.dueDate + 'T00:00:00');
         return d >= week.start && d <= week.end;
       });
     }
     case 'overdue':
-      return all.filter(t => t.dueDate && t.status !== 'done' && isOverdue(t.dueDate));
+      return all.filter(t => t.dueDate && !t.isDoneTask && isOverdue(t.dueDate));
     case 'all':
     default:
-      return all.filter(t => t.status !== 'done');
+      return all.filter(t => !t.isDoneTask);
   }
 }
 
@@ -719,10 +838,10 @@ function getDashboardStats() {
   const today = getToday();
   return {
     total: all.length,
-    inProgress: all.filter(t => t.status === 'in-progress').length,
-    completed: all.filter(t => t.status === 'done').length,
-    overdue: all.filter(t => t.dueDate && t.status !== 'done' && isOverdue(t.dueDate)).length,
-    dueToday: all.filter(t => t.dueDate === today && t.status !== 'done').length,
+    inProgress: all.filter(t => !t.isDoneTask && t.status !== 'backlog').length,
+    completed: all.filter(t => t.isDoneTask).length,
+    overdue: all.filter(t => t.dueDate && !t.isDoneTask && isOverdue(t.dueDate)).length,
+    dueToday: all.filter(t => t.dueDate === today && !t.isDoneTask).length,
   };
 }
 
@@ -804,25 +923,30 @@ function renderDashTasks() {
   let html = '';
   for (const pid of Object.keys(groups)) {
     const g = groups[pid];
+    const dotColor = isNamedColor(g.color) ? g.color : '';
+    const dotStyle = isNamedColor(g.color) ? '' : ` style="background: ${g.color}"`;
     html += `<div class="dash-group">
       <div class="dash-group-header">
-        <span class="dash-group-dot ${g.color}"></span>
+        <span class="dash-group-dot ${dotColor}"${dotStyle}></span>
         <span class="dash-group-name">${g.name}</span>
         <span class="dash-group-count">${g.tasks.length}</span>
       </div>`;
 
     g.tasks.forEach(t => {
-      const priorityClass = t.status === 'done' ? 'done' : t.priority;
-      const overdue = t.dueDate && t.status !== 'done' && isOverdue(t.dueDate);
-      const statusLabels = { 'backlog': 'Backlog', 'in-progress': 'In Progress', 'review': 'Review', 'done': 'Done' };
+      const priorityClass = t.isDoneTask ? 'done' : t.priority;
+      const overdue = t.dueDate && !t.isDoneTask && isOverdue(t.dueDate);
+      // Build status label from project columns
+      const proj = projectData[pid];
+      const colDef = proj.columns.find(c => c.id === t.status);
+      const statusLabel = t.status === 'backlog' ? 'Backlog' : (colDef ? colDef.label : t.status);
 
       html += `<div class="dash-task-row" data-task-id="${t.id}" data-project-id="${pid}">
         <div class="dash-task-left">
           <span class="priority-badge sm ${priorityClass}">${t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}</span>
-          <span class="dash-task-title${t.status === 'done' ? ' done-text' : ''}">${t.title}</span>
+          <span class="dash-task-title${t.isDoneTask ? ' done-text' : ''}">${t.title}</span>
         </div>
         <div class="dash-task-right">
-          <span class="dash-task-status">${statusLabels[t.status]}</span>
+          <span class="dash-task-status">${statusLabel}</span>
           ${t.dueDate ? `<span class="dash-task-date${overdue ? ' overdue' : ''}">${formatDate(t.dueDate)}</span>` : ''}
           ${t.avatar ? `<div class="card-avatar sm ${t.avatarColor}">${t.avatar}</div>` : ''}
         </div>
@@ -856,14 +980,25 @@ function initDashboard() {
 
 // ── Project Create Modal ──────────────────────────────
 let selectedProjectColor = 'orange';
+let selectedTemplate = 'basic-kanban';
+let activeColumnMenu = null;
 
 function openProjectModal() {
   projectModalTitle.textContent = 'New Project';
   projectModalName.value = '';
   selectedProjectColor = 'orange';
+  selectedTemplate = 'basic-kanban';
+
   colorPicker.querySelectorAll('.color-swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.color === 'orange');
   });
+  const customLabel = colorPicker.querySelector('.color-swatch-custom');
+  if (customLabel) customLabel.classList.remove('active');
+
+  templatePicker.querySelectorAll('.template-card').forEach(t => {
+    t.classList.toggle('active', t.dataset.template === 'basic-kanban');
+  });
+
   projectModal.classList.add('open');
   projectModalName.focus();
 }
@@ -885,25 +1020,150 @@ function createProject() {
   }
 
   let slug = slugify(name);
-  // Ensure uniqueness
   let counter = 1;
   while (projectData[slug]) {
     slug = slugify(name) + '-' + counter;
     counter++;
   }
 
-  projectData[slug] = {
+  const template = projectTemplates[selectedTemplate];
+  const columns = template.columns.map(c => ({...c}));
+
+  const newProject = {
     name: name,
     color: selectedProjectColor,
+    columns: columns,
     backlog: [],
-    'in-progress': [],
-    'review': [],
-    'done': [],
   };
+
+  // Initialize empty arrays for each column
+  columns.forEach(col => {
+    newProject[col.id] = [];
+  });
+
+  projectData[slug] = newProject;
 
   closeProjectModal();
   renderSidebarProjects();
   renderProject(slug);
+}
+
+// ── Column Management ─────────────────────────────────
+
+function closeColumnMenu() {
+  if (activeColumnMenu) {
+    activeColumnMenu.remove();
+    activeColumnMenu = null;
+  }
+}
+
+function initColumnMenus() {
+  kanbanColumns.querySelectorAll('.column-more').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const columnId = btn.dataset.columnId;
+
+      if (activeColumnMenu) {
+        closeColumnMenu();
+        return;
+      }
+
+      const menu = document.createElement('div');
+      menu.className = 'column-dropdown';
+      menu.innerHTML = `
+        <button class="column-dropdown-item" data-action="rename" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Rename
+        </button>
+        <button class="column-dropdown-item danger" data-action="delete" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Delete Column
+        </button>
+      `;
+
+      btn.parentElement.style.position = 'relative';
+      btn.parentElement.appendChild(menu);
+      activeColumnMenu = menu;
+
+      menu.querySelector('[data-action="rename"]').addEventListener('click', () => {
+        closeColumnMenu();
+        renameColumn(columnId);
+      });
+
+      menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
+        closeColumnMenu();
+        deleteColumn(columnId);
+      });
+
+      setTimeout(() => {
+        document.addEventListener('click', closeColumnMenu, { once: true });
+      }, 0);
+    });
+  });
+}
+
+function addColumn() {
+  const name = prompt('Column name:');
+  if (!name || !name.trim()) return;
+
+  const project = projectData[currentProject];
+  let id = slugify(name.trim());
+
+  // Ensure unique id
+  let counter = 1;
+  let finalId = id;
+  while (project.columns.some(c => c.id === finalId) || finalId === 'backlog') {
+    finalId = id + '-' + counter;
+    counter++;
+  }
+
+  const newCol = { id: finalId, label: name.trim() };
+
+  // Insert before the done column if one exists
+  const doneIndex = project.columns.findIndex(c => c.isDone);
+  if (doneIndex !== -1) {
+    project.columns.splice(doneIndex, 0, newCol);
+  } else {
+    project.columns.push(newCol);
+  }
+
+  project[finalId] = [];
+  renderKanban();
+}
+
+function renameColumn(columnId) {
+  const project = projectData[currentProject];
+  const col = project.columns.find(c => c.id === columnId);
+  if (!col) return;
+
+  const newName = prompt('Column name:', col.label);
+  if (!newName || !newName.trim()) return;
+
+  col.label = newName.trim();
+  renderKanban();
+}
+
+function deleteColumn(columnId) {
+  const project = projectData[currentProject];
+  const colIndex = project.columns.findIndex(c => c.id === columnId);
+  if (colIndex === -1) return;
+
+  if (project.columns.length <= 1) {
+    alert('Cannot delete the last column.');
+    return;
+  }
+
+  const tasks = project[columnId] || [];
+  if (tasks.length > 0) {
+    if (!confirm(`This column has ${tasks.length} task(s). They will be moved to Backlog. Continue?`)) return;
+    project.backlog.push(...tasks);
+  }
+
+  project.columns.splice(colIndex, 1);
+  delete project[columnId];
+
+  renderBacklog();
+  renderKanban();
 }
 
 function initProjectModal() {
@@ -916,11 +1176,34 @@ function initProjectModal() {
     if (e.target === projectModal) closeProjectModal();
   });
 
+  // Color swatches
   colorPicker.querySelectorAll('.color-swatch').forEach(swatch => {
     swatch.addEventListener('click', () => {
       selectedProjectColor = swatch.dataset.color;
       colorPicker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      const customLabel = colorPicker.querySelector('.color-swatch-custom');
+      if (customLabel) customLabel.classList.remove('active');
       swatch.classList.add('active');
+    });
+  });
+
+  // Custom color picker
+  colorCustomInput.addEventListener('input', (e) => {
+    selectedProjectColor = e.target.value;
+    colorPicker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    const customLabel = colorPicker.querySelector('.color-swatch-custom');
+    if (customLabel) {
+      customLabel.classList.add('active');
+      customLabel.style.setProperty('--custom-color', e.target.value);
+    }
+  });
+
+  // Template picker
+  templatePicker.querySelectorAll('.template-card').forEach(card => {
+    card.addEventListener('click', () => {
+      selectedTemplate = card.dataset.template;
+      templatePicker.querySelectorAll('.template-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
     });
   });
 
@@ -975,7 +1258,9 @@ function renderSidebarProjects() {
     a.className = 'nav-link sidebar-project-link' + (currentView === 'project' && currentProject === pid ? ' active' : '');
     a.href = '#';
     a.dataset.project = pid;
-    a.innerHTML = `<span class="nav-link-icon ${p.color}">${folderSVG}</span>${p.name}`;
+    const iconColorClass = isNamedColor(p.color) ? p.color : '';
+    const iconColorStyle = isNamedColor(p.color) ? '' : ` style="color: ${p.color}"`;
+    a.innerHTML = `<span class="nav-link-icon ${iconColorClass}"${iconColorStyle}>${folderSVG}</span>${p.name}`;
     a.addEventListener('click', (e) => {
       e.preventDefault();
       renderProject(pid);
