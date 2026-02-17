@@ -825,7 +825,9 @@ function showAliasHint(resolved) {
   if (!hint) {
     hint = document.createElement('div');
     hint.className = 'cmd-alias-hint';
-    commandInput.closest('.command-bar').appendChild(hint);
+    // Place hint inside the wrapper (above the bar) instead of inside the bar
+    const wrapper = commandInput.closest('.command-bar-wrapper');
+    wrapper.insertBefore(hint, wrapper.firstChild);
   }
   hint.textContent = `→ ${resolved}`;
   hint.style.display = '';
@@ -1040,20 +1042,26 @@ async function cmdMove(from, to, count) {
     ...project.columns.map(c => ({ id: c.id, label: c.label }))
   ];
 
-  // Match by: label prefix (min 3 chars) > id prefix > label includes > id includes
+  // Match by: label prefix > id prefix > stripped-label prefix > label includes > id includes
   function resolveColumn(query) {
     const q = query.toLowerCase();
+    const strip = s => s.replace(/[\s\-_]/g, ''); // "In Progress" → "inprogress", "in-progress" → "inprogress"
     return statusEntries.find(s => s.label.toLowerCase().startsWith(q))
         || statusEntries.find(s => s.id.toLowerCase().startsWith(q))
+        || statusEntries.find(s => strip(s.label.toLowerCase()).startsWith(q))
+        || statusEntries.find(s => strip(s.id.toLowerCase()).startsWith(q))
         || statusEntries.find(s => s.label.toLowerCase().includes(q))
         || statusEntries.find(s => s.id.toLowerCase().includes(q));
   }
 
   const fromEntry = resolveColumn(from);
   const toEntry = resolveColumn(to);
-  if (!fromEntry || !toEntry || fromEntry.id === toEntry.id) return;
+  if (!fromEntry) { showToast(`Kaynak kolon bulunamadı: "${from}"`, 'error'); return; }
+  if (!toEntry) { showToast(`Hedef kolon bulunamadı: "${to}"`, 'error'); return; }
+  if (fromEntry.id === toEntry.id) { showToast('Kaynak ve hedef kolon aynı olamaz', 'error'); return; }
 
   const tasks = project[fromEntry.id] || [];
+  if (tasks.length === 0) { showToast(`"${fromEntry.label}" kolonunda görev yok`, 'error'); return; }
   const n = count === -1 ? tasks.length : Math.min(count, tasks.length);
   const toMove = tasks.slice(-n);
   const isDone = isColumnDone(project, toEntry.id);

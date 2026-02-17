@@ -2263,23 +2263,24 @@ kbd {
   box-shadow: 0 0 0 2px var(--primary-20);
 }
 
-/* ── Alias hint in command bar ───────────────────────── */
+/* ── Alias hint above command bar ─────────────────────── */
 
 .cmd-alias-hint {
-  position: absolute;
-  right: 100px;
-  top: 50%;
-  transform: translateY(-50%);
+  display: block;
+  text-align: center;
   font-size: 11px;
   font-weight: 600;
   color: var(--primary);
   background: var(--primary-light);
-  padding: 2px 8px;
+  padding: 4px 12px;
   border-radius: var(--radius);
   font-family: monospace;
   pointer-events: none;
   white-space: nowrap;
-  max-width: 200px;
+  margin-bottom: 6px;
+  max-width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
   overflow: hidden;
   text-overflow: ellipsis;
 }
