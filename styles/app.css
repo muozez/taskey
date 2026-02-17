@@ -896,9 +896,15 @@ kbd {
   border-radius: 12px;
   box-shadow: var(--shadow-2xl);
   width: 100%;
-  max-width: 520px;
+  max-width: 640px;
   max-height: 90vh;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.modal-container::-webkit-scrollbar {
+  display: none;
   transform: translateY(8px) scale(0.98);
   transition: transform 0.15s;
 }
