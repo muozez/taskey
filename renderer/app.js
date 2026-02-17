@@ -611,15 +611,25 @@ checklistNewItem.addEventListener('keydown', (e) => {
   }
 });
 
-// Close modal on overlay click
+// Close modal on overlay click (mousedown + click must both be on overlay)
+let taskModalMouseDownTarget = null;
+taskModal.addEventListener('mousedown', (e) => {
+  taskModalMouseDownTarget = e.target;
+});
 taskModal.addEventListener('click', (e) => {
-  if (e.target === taskModal) closeTaskModal();
+  if (e.target === taskModal && taskModalMouseDownTarget === taskModal) {
+    closeTaskModal();
+  }
+  taskModalMouseDownTarget = null;
 });
 
 // Close modal on Escape, save on Ctrl+Enter
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (projectModal.classList.contains('open')) { closeProjectModal(); return; }
+    if (taskModal.classList.contains('open')) { closeTaskModal(); return; }
+  }
   if (!taskModal.classList.contains('open')) return;
-  if (e.key === 'Escape') closeTaskModal();
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') saveTask();
 });
 
@@ -1172,8 +1182,15 @@ function initProjectModal() {
   projectModalCancel.addEventListener('click', closeProjectModal);
   projectModalSave.addEventListener('click', createProject);
 
+  let projectModalMouseDownTarget = null;
+  projectModal.addEventListener('mousedown', (e) => {
+    projectModalMouseDownTarget = e.target;
+  });
   projectModal.addEventListener('click', (e) => {
-    if (e.target === projectModal) closeProjectModal();
+    if (e.target === projectModal && projectModalMouseDownTarget === projectModal) {
+      closeProjectModal();
+    }
+    projectModalMouseDownTarget = null;
   });
 
   // Color swatches
