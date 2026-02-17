@@ -777,17 +777,35 @@ backlogAddBtn.addEventListener('click', () => {
 const commandInput = document.querySelector('.command-input');
 const commandSyntaxTooltip = document.getElementById('commandSyntaxTooltip');
 
-// Show/hide syntax tooltip on focus
+// Tooltip: shown on focus, toggled with /help
+let tooltipPinned = false;
+
 commandInput.addEventListener('focus', () => {
-  commandSyntaxTooltip.classList.add('visible');
   commandInput.closest('.command-bar').classList.add('focused');
 });
 commandInput.addEventListener('blur', () => {
   setTimeout(() => {
     commandSyntaxTooltip.classList.remove('visible');
     commandInput.closest('.command-bar').classList.remove('focused');
+    tooltipPinned = false;
   }, 150);
 });
+
+// ── Command History ─────────────────────────────────
+const commandHistory = [];
+const MAX_HISTORY = 50;
+let historyIndex = -1;
+let historyDraft = '';
+
+function pushHistory(cmd) {
+  if (!cmd) return;
+  // Don't duplicate consecutive entries
+  if (commandHistory.length > 0 && commandHistory[commandHistory.length - 1] === cmd) return;
+  commandHistory.push(cmd);
+  if (commandHistory.length > MAX_HISTORY) commandHistory.shift();
+  historyIndex = -1;
+  historyDraft = '';
+}
 
 // Last-used quick-add settings (persisted per session, remembered between tasks)
 let lastQuickSettings = {
@@ -841,8 +859,8 @@ function parseCommandInput(raw) {
     return result;
   }
 
-  // :mv SRC>DST N (column slugs, N optional defaults to 1)
-  const mvMatch = raw.match(/^:mv\s+(\S+)>(\S+)(?:\s+(a|\d+))?$/i);
+  // :mv SRC DST N (space-separated, min 3-char prefix match, N optional)
+  const mvMatch = raw.match(/^:mv\s+(\S+)\s+(\S+)(?:\s+(a|\d+))?$/i);
   if (mvMatch) {
     const count = mvMatch[3] ? (mvMatch[3].toLowerCase() === 'a' ? -1 : parseInt(mvMatch[3], 10)) : 1;
     result.command = { type: 'mv', from: mvMatch[1].toLowerCase(), to: mvMatch[2].toLowerCase(), count };
@@ -883,6 +901,12 @@ function parseCommandInput(raw) {
   // :clear
   if (raw.match(/^:clear$/i)) {
     result.command = { type: 'clear' };
+    return result;
+  }
+
+  // /help
+  if (raw.match(/^\/help$/i)) {
+    result.command = { type: 'help' };
     return result;
   }
 
@@ -960,21 +984,36 @@ async function cmdDone(count) {
   renderKanban();
 }
 
-/** :mv SRC>DST N — move between named columns */
+/** :mv SRC DST N — move between named columns (min 3-char prefix match) */
 async function cmdMove(from, to, count) {
   const project = projectData[currentProject];
   if (!project) return;
-  // Resolve column slugs (partial match)
-  const allStatuses = ['backlog', ...project.columns.map(c => c.id)];
-  const fromCol = allStatuses.find(s => s.startsWith(from)) || allStatuses.find(s => s.includes(from));
-  const toCol = allStatuses.find(s => s.startsWith(to)) || allStatuses.find(s => s.includes(to));
-  if (!fromCol || !toCol || fromCol === toCol) return;
-  const tasks = project[fromCol] || [];
+
+  // Build lookup: id + label for matching
+  const statusEntries = [
+    { id: 'backlog', label: 'Backlog' },
+    ...project.columns.map(c => ({ id: c.id, label: c.label }))
+  ];
+
+  // Match by: label prefix (min 3 chars) > id prefix > label includes > id includes
+  function resolveColumn(query) {
+    const q = query.toLowerCase();
+    return statusEntries.find(s => s.label.toLowerCase().startsWith(q))
+        || statusEntries.find(s => s.id.toLowerCase().startsWith(q))
+        || statusEntries.find(s => s.label.toLowerCase().includes(q))
+        || statusEntries.find(s => s.id.toLowerCase().includes(q));
+  }
+
+  const fromEntry = resolveColumn(from);
+  const toEntry = resolveColumn(to);
+  if (!fromEntry || !toEntry || fromEntry.id === toEntry.id) return;
+
+  const tasks = project[fromEntry.id] || [];
   const n = count === -1 ? tasks.length : Math.min(count, tasks.length);
   const toMove = tasks.slice(-n);
-  const isDone = isColumnDone(project, toCol);
+  const isDone = isColumnDone(project, toEntry.id);
   for (const task of toMove) {
-    await db.tasks.move(task.id, toCol, isDone ? 100 : undefined);
+    await db.tasks.move(task.id, toEntry.id, isDone ? 100 : undefined);
   }
   await refreshProjectData(currentProject);
   renderBacklog();
@@ -1073,6 +1112,10 @@ async function executeCommand(parsed) {
     case 'clear':
       lastQuickSettings = { priority: 'medium', avatarColor: 'blue', tags: [], duration: '' };
       return;
+    case 'help':
+      tooltipPinned = !tooltipPinned;
+      commandSyntaxTooltip.classList.toggle('visible', tooltipPinned);
+      return;
   }
 }
 
@@ -1091,9 +1134,38 @@ commandInput.addEventListener('keydown', (e) => {
     return;
   }
 
+  // ── History navigation with up/down arrows ──
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (commandHistory.length === 0) return;
+    if (historyIndex === -1) {
+      historyDraft = commandInput.value;
+      historyIndex = commandHistory.length - 1;
+    } else if (historyIndex > 0) {
+      historyIndex--;
+    }
+    commandInput.value = commandHistory[historyIndex];
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (historyIndex === -1) return;
+    if (historyIndex < commandHistory.length - 1) {
+      historyIndex++;
+      commandInput.value = commandHistory[historyIndex];
+    } else {
+      historyIndex = -1;
+      commandInput.value = historyDraft;
+    }
+    return;
+  }
+
   if (e.key === 'Enter') {
     const raw = commandInput.value.trim();
     if (!raw) return;
+
+    // Save to history
+    pushHistory(raw);
 
     const parsed = parseCommandInput(raw);
     commandInput.value = '';

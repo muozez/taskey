@@ -244,27 +244,28 @@
         <div class="syntax-section">
           <div class="syntax-section-title">Taşıma</div>
           <div class="syntax-grid">
-            <span class="syntax-key">:sw1</span><span class="syntax-desc">Son 1 backlog → ilk kolon</span>
-            <span class="syntax-key">:done2</span><span class="syntax-desc">Son 2 in-progress → done</span>
-            <span class="syntax-key">:mv back>rev 3</span><span class="syntax-desc">Backlog → Review (3 task)</span>
+            <span class="syntax-key">:sw1</span><span class="syntax-desc">Backlog → ilk kolon</span>
+            <span class="syntax-key">:done2</span><span class="syntax-desc">Aktif kolon → done</span>
+            <span class="syntax-key">:mv inp rev 3</span><span class="syntax-desc">In Progress → Review (3 task)</span>
+            <span class="syntax-key">:mv hot rev 3</span><span class="syntax-desc">Hot-fix → Review (3 task)</span>
           </div>
         </div>
         <div class="syntax-section">
           <div class="syntax-section-title">Yönetim</div>
           <div class="syntax-grid">
-            <span class="syntax-key">:del query</span><span class="syntax-desc">Task sil (başlık eşleşmesi)</span>
-            <span class="syntax-key">:col Name</span><span class="syntax-desc">Yeni kolon oluştur</span>
+            <span class="syntax-key">:del query</span><span class="syntax-desc">Task sil</span>
+            <span class="syntax-key">:col Name</span><span class="syntax-desc">Kolon oluştur</span>
             <span class="syntax-key">:delcol Name</span><span class="syntax-desc">Kolon sil</span>
-            <span class="syntax-key">:proj Name $blue</span><span class="syntax-desc">Yeni proje oluştur</span>
-            <span class="syntax-key">:clear</span><span class="syntax-desc">Hatırlanan ayarları sıfırla</span>
+            <span class="syntax-key">:proj Name $blue</span><span class="syntax-desc">Proje oluştur</span>
+            <span class="syntax-key">:clear</span><span class="syntax-desc">Ayarları sıfırla</span>
           </div>
         </div>
       </div>
       <div class="command-bar">
         <div class="cmd-badge">CMD</div>
-        <input class="command-input" type="text" placeholder='Task adı veya komut (:sw1 :done :del :col :proj ...)' />
+        <input class="command-input" type="text" placeholder='/help · task adı veya komut yazın...' />
         <div class="command-bar-hint">
-          <span class="hint-text"><kbd>Esc</kbd> kapat · <kbd>Enter</kbd> çalıştır</span>
+          <span class="hint-text"><kbd>↑↓</kbd> geçmiş · <kbd>Esc</kbd> kapat</span>
           <button class="btn-voice" title="Voice input">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
