@@ -801,8 +801,40 @@ commandInput.addEventListener('blur', () => {
     commandSyntaxTooltip.classList.remove('visible');
     commandInput.closest('.command-bar').classList.remove('focused');
     tooltipPinned = false;
+    hideAliasHint();
   }, 150);
 });
+
+// Live alias hint
+commandInput.addEventListener('input', () => {
+  const raw = commandInput.value.trim();
+  if (!raw || Object.keys(commandAliases).length === 0) {
+    hideAliasHint();
+    return;
+  }
+  const resolved = resolveAliases(raw);
+  if (resolved !== raw) {
+    showAliasHint(resolved);
+  } else {
+    hideAliasHint();
+  }
+});
+
+function showAliasHint(resolved) {
+  let hint = document.querySelector('.cmd-alias-hint');
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.className = 'cmd-alias-hint';
+    commandInput.closest('.command-bar').appendChild(hint);
+  }
+  hint.textContent = `→ ${resolved}`;
+  hint.style.display = '';
+}
+
+function hideAliasHint() {
+  const hint = document.querySelector('.cmd-alias-hint');
+  if (hint) hint.style.display = 'none';
+}
 
 // ── Command History ─────────────────────────────────
 const commandHistory = [];
@@ -1114,21 +1146,27 @@ async function cmdCreateProject(name, color) {
 
 async function executeCommand(parsed) {
   const cmd = parsed.command;
-  switch (cmd.type) {
-    case 'sw':      return cmdSwitch(cmd.count);
-    case 'done':    return cmdDone(cmd.count);
-    case 'mv':      return cmdMove(cmd.from, cmd.to, cmd.count);
-    case 'del':     return cmdDelete(cmd.query);
-    case 'col':     return cmdCreateColumn(cmd.name);
-    case 'delcol':  return cmdDeleteColumn(cmd.name);
-    case 'proj':    return cmdCreateProject(cmd.name, cmd.color);
-    case 'clear':
-      lastQuickSettings = { priority: 'medium', avatarColor: 'blue', tags: [], duration: '' };
-      return;
-    case 'help':
-      tooltipPinned = !tooltipPinned;
-      commandSyntaxTooltip.classList.toggle('visible', tooltipPinned);
-      return;
+  try {
+    switch (cmd.type) {
+      case 'sw':      await cmdSwitch(cmd.count); showToast('Görevler taşındı', 'success'); return;
+      case 'done':    await cmdDone(cmd.count); showToast('Görevler tamamlandı', 'success'); return;
+      case 'mv':      await cmdMove(cmd.from, cmd.to, cmd.count); showToast('Görevler taşındı', 'success'); return;
+      case 'del':     await cmdDelete(cmd.query); showToast('Görev silindi', 'success'); return;
+      case 'col':     await cmdCreateColumn(cmd.name); showToast(`"${cmd.name}" kolonu oluşturuldu`, 'success'); return;
+      case 'delcol':  await cmdDeleteColumn(cmd.name); showToast('Kolon silindi', 'success'); return;
+      case 'proj':    await cmdCreateProject(cmd.name, cmd.color); showToast(`"${cmd.name}" projesi oluşturuldu`, 'success'); return;
+      case 'clear':
+        lastQuickSettings = { priority: 'medium', avatarColor: 'blue', tags: [], duration: '' };
+        showToast('Ayarlar sıfırlandı', 'info');
+        return;
+      case 'help':
+        tooltipPinned = !tooltipPinned;
+        commandSyntaxTooltip.classList.toggle('visible', tooltipPinned);
+        return;
+    }
+  } catch (err) {
+    console.error('[Taskey] Command error:', err);
+    showToast('Komut çalıştırılamadı', 'error');
   }
 }
 
@@ -1194,6 +1232,12 @@ commandInput.addEventListener('keydown', (e) => {
     // Must have a title to create a task
     if (!parsed.title) return;
 
+    // Prevent creating tasks that look like unknown commands
+    if (parsed.title.match(/^:\w+/)) {
+      showToast(`Bilinmeyen komut: ${parsed.title.split(' ')[0]}`, 'error');
+      return;
+    }
+
     // Remember settings for next time
     if (parsed.hasExplicitSettings) {
       lastQuickSettings = { ...parsed.settings };
@@ -1219,6 +1263,7 @@ commandInput.addEventListener('keydown', (e) => {
       return refreshProjectData(currentProject);
     }).then(() => {
       renderBacklog();
+      showToast(`"${parsed.title}" eklendi`, 'success');
     });
   }
 });
@@ -1359,23 +1404,23 @@ function renderDashStats() {
   dashStats.innerHTML = `
     <div class="dash-stat-card">
       <div class="dash-stat-value">${s.total}</div>
-      <div class="dash-stat-label">Total Tasks</div>
+      <div class="dash-stat-label">Toplam Görev</div>
     </div>
     <div class="dash-stat-card accent-blue">
       <div class="dash-stat-value">${s.inProgress}</div>
-      <div class="dash-stat-label">In Progress</div>
+      <div class="dash-stat-label">Devam Eden</div>
     </div>
     <div class="dash-stat-card accent-green">
       <div class="dash-stat-value">${s.completed}</div>
-      <div class="dash-stat-label">Completed</div>
+      <div class="dash-stat-label">Tamamlanan</div>
     </div>
     <div class="dash-stat-card accent-orange">
       <div class="dash-stat-value">${s.overdue}</div>
-      <div class="dash-stat-label">Overdue</div>
+      <div class="dash-stat-label">Gecikmiş</div>
     </div>
     <div class="dash-stat-card accent-purple">
       <div class="dash-stat-value">${s.dueToday}</div>
-      <div class="dash-stat-label">Due Today</div>
+      <div class="dash-stat-label">Bugün</div>
     </div>
   `;
 }
@@ -1391,7 +1436,7 @@ function renderDashTasks() {
   if (tasks.length === 0) {
     dashTaskList.innerHTML = `<div class="dash-empty">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-300)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-      <p>No tasks found for this filter.</p>
+      <p>Bu filtre için görev bulunamadı.</p>
     </div>`;
     return;
   }
@@ -1612,6 +1657,7 @@ function showWelcomeModal() {
 
     updateSidebarUser();
     modal.classList.remove('open');
+    showToast(`Hoş geldin, ${firstName}!`, 'success');
     showDashboard();
   });
 
@@ -1720,21 +1766,35 @@ function initSettingsModal() {
       return;
     }
 
-    userProfile.firstName = firstName;
-    userProfile.lastName = lastName;
-    await db.settings.setMultiple({
-      'user.firstName': firstName,
-      'user.lastName': lastName,
-    });
+    try {
+      // Save profile
+      userProfile.firstName = firstName;
+      userProfile.lastName = lastName;
+      await db.settings.setMultiple({
+        'user.firstName': firstName,
+        'user.lastName': lastName,
+      });
 
-    commandAliases = { ...settingsAliasesTemp };
-    await db.aliases.setAll(commandAliases);
+      // Save aliases — clean empty entries
+      const cleanAliases = {};
+      for (const [k, v] of Object.entries(settingsAliasesTemp)) {
+        const key = k.trim();
+        const val = v.trim();
+        if (key && val) cleanAliases[key] = val;
+      }
+      await db.aliases.setAll(cleanAliases);
+      commandAliases = cleanAliases;
 
-    updateSidebarUser();
-    closeSettingsModal();
+      updateSidebarUser();
+      closeSettingsModal();
+      showToast('Ayarlar kaydedildi', 'success');
 
-    // Refresh dashboard if visible
-    if (currentView === 'dashboard') showDashboard();
+      // Refresh dashboard if visible
+      if (currentView === 'dashboard') showDashboard();
+    } catch (err) {
+      console.error('[Taskey] Settings save error:', err);
+      showToast('Ayarlar kaydedilemedi', 'error');
+    }
   });
 
   // Escape to close
@@ -1750,23 +1810,66 @@ function initSettingsModal() {
 function updateSidebarUser() {
   const nameEl = document.querySelector('.user-name');
   const avatarEl = document.querySelector('.user-avatar');
-  const planEl = document.querySelector('.user-plan');
   const fullName = [userProfile.firstName, userProfile.lastName].filter(Boolean).join(' ') || 'Kullanıcı';
   nameEl.textContent = fullName;
   avatarEl.textContent = (userProfile.firstName || 'K').charAt(0).toUpperCase();
-  planEl.textContent = 'Pro Plan';
+}
+
+// ── Toast Notification System ─────────────────────────
+
+function showToast(message, type = 'info') {
+  // type: 'success', 'error', 'info'
+  const existing = document.querySelector('.toast-notification');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = `toast-notification toast-${type}`;
+
+  const icons = {
+    success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+  };
+
+  toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-msg">${message}</span>`;
+  document.body.appendChild(toast);
+
+  // Trigger animation
+  requestAnimationFrame(() => toast.classList.add('toast-visible'));
+
+  setTimeout(() => {
+    toast.classList.remove('toast-visible');
+    toast.classList.add('toast-hiding');
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
 }
 
 // ── Command Alias Resolution ──────────────────────────
 
 function resolveAliases(raw) {
-  // Check if the input starts with a known alias
-  for (const [alias, cmd] of Object.entries(commandAliases)) {
-    // Exact alias match or alias followed by space + args
+  if (!raw || Object.keys(commandAliases).length === 0) return raw;
+
+  // Sort aliases by length (longest first) to avoid partial matches
+  const sortedAliases = Object.entries(commandAliases)
+    .sort((a, b) => b[0].length - a[0].length);
+
+  for (const [alias, cmd] of sortedAliases) {
+    if (!alias || !cmd) continue;
+    // Exact match
     if (raw === alias) {
       return cmd;
     }
+    // Alias followed by space + args (word boundary)
     if (raw.startsWith(alias + ' ')) {
+      return cmd + raw.slice(alias.length);
+    }
+    // Also try case-insensitive match
+    const rawLower = raw.toLowerCase();
+    const aliasLower = alias.toLowerCase();
+    if (rawLower === aliasLower) {
+      return cmd;
+    }
+    if (rawLower.startsWith(aliasLower + ' ')) {
       return cmd + raw.slice(alias.length);
     }
   }
