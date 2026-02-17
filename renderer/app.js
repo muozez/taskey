@@ -773,16 +773,20 @@ backlogAddBtn.addEventListener('click', () => {
   modalTaskStatus.value = 'backlog';
 });
 
-// ── Command Bar Task Creation ─────────────────────────
+// ── Command Bar ───────────────────────────────────────
 const commandInput = document.querySelector('.command-input');
 const commandSyntaxTooltip = document.getElementById('commandSyntaxTooltip');
 
 // Show/hide syntax tooltip on focus
 commandInput.addEventListener('focus', () => {
   commandSyntaxTooltip.classList.add('visible');
+  commandInput.closest('.command-bar').classList.add('focused');
 });
 commandInput.addEventListener('blur', () => {
-  setTimeout(() => commandSyntaxTooltip.classList.remove('visible'), 150);
+  setTimeout(() => {
+    commandSyntaxTooltip.classList.remove('visible');
+    commandInput.closest('.command-bar').classList.remove('focused');
+  }, 150);
 });
 
 // Last-used quick-add settings (persisted per session, remembered between tasks)
@@ -793,66 +797,121 @@ let lastQuickSettings = {
   duration: '',
 };
 
+// ── Command Parser ────────────────────────────────────
+
 /**
- * Parses command bar input with special syntax:
- *   :t60  or :t2h  → estimate time (60m, 2h, etc.)
- *   $red            → task avatar color
- *   #soft,test      → tags: soft, test
- *   !high / !low    → priority
- *   :sw1            → move last 1 backlog item(s) to first column
- *   :sw2            → move last 2
- *   :swa            → move all
+ * All standalone commands (entered alone, no title):
+ *   :sw1 / :sw2 / :swa       → move last N backlog → first column
+ *   :del QUERY                → delete task(s) matching query
+ *   :col NAME                 → create a new column
+ *   :delcol NAME              → delete a column
+ *   :proj NAME $color         → create a new project
+ *   :done N                   → move last N from first non-done col → done col
+ *   :mv SRC>DST N             → move last N from SRC column → DST column
+ *   :clear                    → reset remembered settings
  *
- * Everything else is the task title.
- * Last-used settings are remembered for subsequent tasks.
+ * Inline modifiers (mixed with task title):
+ *   :t60 / :t2h               → estimate time
+ *   $red                      → avatar color
+ *   #tag1,tag2                → tags
+ *   !high / !low              → priority
  */
 function parseCommandInput(raw) {
   const result = {
     title: '',
-    isSwitch: false,
-    switchCount: 0,
+    command: null, // { type, ...params }
     settings: { ...lastQuickSettings },
     hasExplicitSettings: false,
   };
 
-  // Check for :sw command first
+  // ── Standalone commands ──
+
+  // :sw
   const swMatch = raw.match(/^:sw(a|\d+)$/i);
   if (swMatch) {
-    result.isSwitch = true;
-    result.switchCount = swMatch[1].toLowerCase() === 'a' ? -1 : parseInt(swMatch[1], 10);
+    result.command = { type: 'sw', count: swMatch[1].toLowerCase() === 'a' ? -1 : parseInt(swMatch[1], 10) };
     return result;
   }
 
+  // :done N / :donea
+  const doneMatch = raw.match(/^:done(a|\d+)?$/i);
+  if (doneMatch) {
+    const val = doneMatch[1] ? (doneMatch[1].toLowerCase() === 'a' ? -1 : parseInt(doneMatch[1], 10)) : 1;
+    result.command = { type: 'done', count: val };
+    return result;
+  }
+
+  // :mv SRC>DST N (column slugs, N optional defaults to 1)
+  const mvMatch = raw.match(/^:mv\s+(\S+)>(\S+)(?:\s+(a|\d+))?$/i);
+  if (mvMatch) {
+    const count = mvMatch[3] ? (mvMatch[3].toLowerCase() === 'a' ? -1 : parseInt(mvMatch[3], 10)) : 1;
+    result.command = { type: 'mv', from: mvMatch[1].toLowerCase(), to: mvMatch[2].toLowerCase(), count };
+    return result;
+  }
+
+  // :del QUERY
+  const delMatch = raw.match(/^:del\s+(.+)$/i);
+  if (delMatch) {
+    result.command = { type: 'del', query: delMatch[1].trim() };
+    return result;
+  }
+
+  // :delcol NAME
+  const delcolMatch = raw.match(/^:delcol\s+(.+)$/i);
+  if (delcolMatch) {
+    result.command = { type: 'delcol', name: delcolMatch[1].trim() };
+    return result;
+  }
+
+  // :col NAME
+  const colMatch = raw.match(/^:col\s+(.+)$/i);
+  if (colMatch) {
+    result.command = { type: 'col', name: colMatch[1].trim() };
+    return result;
+  }
+
+  // :proj NAME $color
+  const projMatch = raw.match(/^:proj\s+(.+)$/i);
+  if (projMatch) {
+    let projStr = projMatch[1].trim();
+    let color = 'orange';
+    projStr = projStr.replace(/\$(\w+)/g, (_, c) => { color = c.toLowerCase(); return ''; });
+    result.command = { type: 'proj', name: projStr.trim(), color };
+    return result;
+  }
+
+  // :clear
+  if (raw.match(/^:clear$/i)) {
+    result.command = { type: 'clear' };
+    return result;
+  }
+
+  // ── Inline modifiers (task creation) ──
   let remaining = raw;
 
-  // Parse :tNUM or :tNUMu (time estimate)
+  // :tNUM or :tNUMu (time estimate)
   remaining = remaining.replace(/:t(\d+)(m|h|d|w)?/gi, (_, num, unit) => {
     unit = (unit || 'm').toLowerCase();
-    const val = parseInt(num, 10);
-    if (unit === 'm') {
-      result.settings.duration = val <= 30 ? val + 'm' : val + 'm';
-    } else {
-      result.settings.duration = val + unit;
-    }
+    result.settings.duration = parseInt(num, 10) + unit;
     result.hasExplicitSettings = true;
     return '';
   });
 
-  // Parse $color (avatar color)
+  // $color (avatar color)
   remaining = remaining.replace(/\$(\w+)/g, (_, color) => {
     result.settings.avatarColor = color.toLowerCase();
     result.hasExplicitSettings = true;
     return '';
   });
 
-  // Parse #tag1,tag2 (tags)
+  // #tag1,tag2 (tags)
   remaining = remaining.replace(/#([\w,]+)/g, (_, tagStr) => {
     result.settings.tags = tagStr.split(',').map(t => t.trim()).filter(Boolean);
     result.hasExplicitSettings = true;
     return '';
   });
 
-  // Parse !priority
+  // !priority
   remaining = remaining.replace(/!(high|medium|low)/gi, (_, p) => {
     result.settings.priority = p.toLowerCase();
     result.hasExplicitSettings = true;
@@ -863,51 +922,190 @@ function parseCommandInput(raw) {
   return result;
 }
 
-/**
- * Handles :sw commands — moves N backlog items to the first column.
- */
-async function handleSwitchCommand(count) {
-  const project = projectData[currentProject];
-  if (!project || !project.backlog || project.backlog.length === 0) return;
+// ── Command Executors ─────────────────────────────────
 
+/** :sw — move N backlog → first column */
+async function cmdSwitch(count) {
+  const project = projectData[currentProject];
+  if (!project?.backlog?.length) return;
   const firstCol = project.columns[0];
   if (!firstCol) return;
-
-  const total = project.backlog.length;
-  const n = count === -1 ? total : Math.min(count, total);
-
-  // Take the last N items from backlog (most recently added)
+  const n = count === -1 ? project.backlog.length : Math.min(count, project.backlog.length);
   const toMove = project.backlog.slice(-n);
-
   for (const task of toMove) {
-    const newProgress = firstCol.isDone ? 100 : undefined;
-    await db.tasks.move(task.id, firstCol.id, newProgress);
+    await db.tasks.move(task.id, firstCol.id, firstCol.isDone ? 100 : undefined);
   }
-
   await refreshProjectData(currentProject);
   renderBacklog();
   renderKanban();
 }
 
+/** :done — move N from first non-done column → done column */
+async function cmdDone(count) {
+  const project = projectData[currentProject];
+  if (!project) return;
+  const doneCol = project.columns.find(c => c.isDone);
+  if (!doneCol) return;
+  // Find first non-done column that has tasks
+  const sourceCol = project.columns.find(c => !c.isDone && (project[c.id]?.length > 0));
+  if (!sourceCol) return;
+  const tasks = project[sourceCol.id] || [];
+  const n = count === -1 ? tasks.length : Math.min(count, tasks.length);
+  const toMove = tasks.slice(-n);
+  for (const task of toMove) {
+    await db.tasks.move(task.id, doneCol.id, 100);
+  }
+  await refreshProjectData(currentProject);
+  renderBacklog();
+  renderKanban();
+}
+
+/** :mv SRC>DST N — move between named columns */
+async function cmdMove(from, to, count) {
+  const project = projectData[currentProject];
+  if (!project) return;
+  // Resolve column slugs (partial match)
+  const allStatuses = ['backlog', ...project.columns.map(c => c.id)];
+  const fromCol = allStatuses.find(s => s.startsWith(from)) || allStatuses.find(s => s.includes(from));
+  const toCol = allStatuses.find(s => s.startsWith(to)) || allStatuses.find(s => s.includes(to));
+  if (!fromCol || !toCol || fromCol === toCol) return;
+  const tasks = project[fromCol] || [];
+  const n = count === -1 ? tasks.length : Math.min(count, tasks.length);
+  const toMove = tasks.slice(-n);
+  const isDone = isColumnDone(project, toCol);
+  for (const task of toMove) {
+    await db.tasks.move(task.id, toCol, isDone ? 100 : undefined);
+  }
+  await refreshProjectData(currentProject);
+  renderBacklog();
+  renderKanban();
+}
+
+/** :del QUERY — delete task(s) matching title substring */
+async function cmdDelete(query) {
+  const project = projectData[currentProject];
+  if (!project) return;
+  const q = query.toLowerCase();
+  const statuses = getProjectStatuses(project);
+  const matches = [];
+  for (const status of statuses) {
+    if (!project[status]) continue;
+    for (const task of project[status]) {
+      if (task.title.toLowerCase().includes(q) || task.id === query) {
+        matches.push(task);
+      }
+    }
+  }
+  if (matches.length === 0) return;
+  if (matches.length > 1) {
+    if (!confirm(`${matches.length} task found matching "${query}". Delete all?`)) return;
+  }
+  for (const task of matches) {
+    await db.tasks.delete(task.id);
+  }
+  await refreshProjectData(currentProject);
+  renderBacklog();
+  renderKanban();
+}
+
+/** :col NAME — create new column */
+async function cmdCreateColumn(name) {
+  const project = projectData[currentProject];
+  if (!project) return;
+  let id = slugify(name);
+  let counter = 1;
+  let finalId = id;
+  while (project.columns.some(c => c.id === finalId) || finalId === 'backlog') {
+    finalId = id + '-' + counter++;
+  }
+  await db.columns.add(currentProject, finalId, name, false);
+  await refreshProjectData(currentProject);
+  renderKanban();
+}
+
+/** :delcol NAME — delete a column by name */
+async function cmdDeleteColumn(name) {
+  const project = projectData[currentProject];
+  if (!project) return;
+  const q = name.toLowerCase();
+  const col = project.columns.find(c => c.label.toLowerCase() === q || c.id === q);
+  if (!col) return;
+  if (project.columns.length <= 1) return;
+  const tasks = project[col.id] || [];
+  if (tasks.length > 0) {
+    if (!confirm(`"${col.label}" has ${tasks.length} task(s). They'll move to Backlog. Continue?`)) return;
+  }
+  await db.columns.delete(currentProject, col.id);
+  await refreshProjectData(currentProject);
+  renderBacklog();
+  renderKanban();
+}
+
+/** :proj NAME $color — create new project */
+async function cmdCreateProject(name, color) {
+  let slug = slugify(name);
+  let counter = 1;
+  while (projectData[slug]) {
+    slug = slugify(name) + '-' + counter++;
+  }
+  const defaultCols = [
+    { id: 'in-progress', label: 'In Progress' },
+    { id: 'done', label: 'Done', isDone: true }
+  ];
+  await db.projects.create(slug, name, color, defaultCols);
+  await refreshAllProjects();
+  renderSidebarProjects();
+  renderProject(slug);
+}
+
+// ── Command Dispatcher ────────────────────────────────
+
+async function executeCommand(parsed) {
+  const cmd = parsed.command;
+  switch (cmd.type) {
+    case 'sw':      return cmdSwitch(cmd.count);
+    case 'done':    return cmdDone(cmd.count);
+    case 'mv':      return cmdMove(cmd.from, cmd.to, cmd.count);
+    case 'del':     return cmdDelete(cmd.query);
+    case 'col':     return cmdCreateColumn(cmd.name);
+    case 'delcol':  return cmdDeleteColumn(cmd.name);
+    case 'proj':    return cmdCreateProject(cmd.name, cmd.color);
+    case 'clear':
+      lastQuickSettings = { priority: 'medium', avatarColor: 'blue', tags: [], duration: '' };
+      return;
+  }
+}
+
+// ── Command Bar Key Handler ───────────────────────────
+
 commandInput.addEventListener('keydown', (e) => {
+  // Escape / Space (when empty) → blur
+  if (e.key === 'Escape') {
+    commandInput.value = '';
+    commandInput.blur();
+    return;
+  }
+  if (e.key === ' ' && commandInput.value === '') {
+    e.preventDefault();
+    commandInput.blur();
+    return;
+  }
+
   if (e.key === 'Enter') {
     const raw = commandInput.value.trim();
     if (!raw) return;
 
     const parsed = parseCommandInput(raw);
+    commandInput.value = '';
 
-    // Handle :sw command
-    if (parsed.isSwitch) {
-      commandInput.value = '';
-      handleSwitchCommand(parsed.switchCount);
+    // Standalone command
+    if (parsed.command) {
+      executeCommand(parsed);
       return;
     }
 
     // Must have a title to create a task
-    if (!parsed.title) {
-      commandInput.value = '';
-      return;
-    }
+    if (!parsed.title) return;
 
     // Remember settings for next time
     if (parsed.hasExplicitSettings) {
@@ -935,29 +1133,25 @@ commandInput.addEventListener('keydown', (e) => {
     }).then(() => {
       renderBacklog();
     });
-
-    commandInput.value = '';
   }
 });
 
-// ── Focus command bar on empty-area click or Enter ────
+// ── Focus: Enter → cmd bar, Esc/Space → release ──────
 document.addEventListener('keydown', (e) => {
-  // Only when project view is active, no modal is open, and no input is focused
   if (currentView !== 'project') return;
   if (taskModal.classList.contains('open')) return;
   if (projectModal.classList.contains('open')) return;
   const active = document.activeElement;
-  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+  const isInputFocused = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
 
-  if (e.key === 'Enter') {
+  if (!isInputFocused && e.key === 'Enter') {
     e.preventDefault();
     commandInput.focus();
   }
 });
 
-// Click on empty board area focuses command bar
+// Click on empty board area → focus command bar
 boardArea.addEventListener('click', (e) => {
-  // Only if click target is the board area itself (not a child element)
   if (e.target === boardArea || e.target.classList.contains('kanban-columns') || e.target.classList.contains('column-cards')) {
     commandInput.focus();
   }

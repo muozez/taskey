@@ -232,20 +232,39 @@
     <!-- Command Bar -->
     <div class="command-bar-wrapper">
       <div class="command-syntax-tooltip" id="commandSyntaxTooltip">
-        <div class="syntax-grid">
-          <span class="syntax-key">:t60</span><span class="syntax-desc">Tahmini süre (60m, :t2h, :t1d)</span>
-          <span class="syntax-key">$red</span><span class="syntax-desc">Renk (orange, blue, green, purple...)</span>
-          <span class="syntax-key">#tag1,tag2</span><span class="syntax-desc">Etiketler</span>
-          <span class="syntax-key">!high</span><span class="syntax-desc">Öncelik (high, medium, low)</span>
-          <span class="syntax-key">:sw1</span><span class="syntax-desc">Son 1 backlog'u ilk kolona taşı</span>
-          <span class="syntax-key">:swa</span><span class="syntax-desc">Tüm backlog'u taşı</span>
+        <div class="syntax-section">
+          <div class="syntax-section-title">Task Oluştur</div>
+          <div class="syntax-grid">
+            <span class="syntax-key">:t60</span><span class="syntax-desc">Süre (60m, :t2h, :t1d)</span>
+            <span class="syntax-key">$red</span><span class="syntax-desc">Renk</span>
+            <span class="syntax-key">#tag1,tag2</span><span class="syntax-desc">Etiketler</span>
+            <span class="syntax-key">!high</span><span class="syntax-desc">Öncelik (high, medium, low)</span>
+          </div>
+        </div>
+        <div class="syntax-section">
+          <div class="syntax-section-title">Taşıma</div>
+          <div class="syntax-grid">
+            <span class="syntax-key">:sw1</span><span class="syntax-desc">Son 1 backlog → ilk kolon</span>
+            <span class="syntax-key">:done2</span><span class="syntax-desc">Son 2 in-progress → done</span>
+            <span class="syntax-key">:mv back>rev 3</span><span class="syntax-desc">Backlog → Review (3 task)</span>
+          </div>
+        </div>
+        <div class="syntax-section">
+          <div class="syntax-section-title">Yönetim</div>
+          <div class="syntax-grid">
+            <span class="syntax-key">:del query</span><span class="syntax-desc">Task sil (başlık eşleşmesi)</span>
+            <span class="syntax-key">:col Name</span><span class="syntax-desc">Yeni kolon oluştur</span>
+            <span class="syntax-key">:delcol Name</span><span class="syntax-desc">Kolon sil</span>
+            <span class="syntax-key">:proj Name $blue</span><span class="syntax-desc">Yeni proje oluştur</span>
+            <span class="syntax-key">:clear</span><span class="syntax-desc">Hatırlanan ayarları sıfırla</span>
+          </div>
         </div>
       </div>
       <div class="command-bar">
         <div class="cmd-badge">CMD</div>
-        <input class="command-input" type="text" placeholder='Task name  :t60 $red #tag1,tag2 !high  :sw1' />
+        <input class="command-input" type="text" placeholder='Task adı veya komut (:sw1 :done :del :col :proj ...)' />
         <div class="command-bar-hint">
-          <span class="hint-text"><kbd>Enter</kbd> save · <kbd>:sw1</kbd> move</span>
+          <span class="hint-text"><kbd>Esc</kbd> kapat · <kbd>Enter</kbd> çalıştır</span>
           <button class="btn-voice" title="Voice input">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
