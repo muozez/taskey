@@ -100,6 +100,12 @@
     <!-- Board Area: Backlog Panel + Kanban -->
     <div class="board-area">
 
+      <!-- Backlog Reopen Strip (visible when collapsed) -->
+      <div class="backlog-reopen" id="backlogReopen" title="Open Backlog">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <span class="backlog-reopen-label">Backlog</span>
+      </div>
+
       <!-- Backlog Panel (per project) -->
       <div class="backlog-panel" id="backlogPanel">
         <div class="backlog-header">
@@ -112,6 +118,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
         </div>
+        <button class="backlog-add-btn" id="backlogAddBtn" title="Add task to backlog">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Task
+        </button>
         <div class="backlog-cards" id="backlogCards">
           <!-- Website Redesign backlog cards -->
           <div class="task-card" draggable="true" data-task-id="task-1" data-project="website-redesign">
@@ -217,6 +227,69 @@
     </div>
 
   </main>
+</div>
+
+<!-- ── Task Detail Modal ──────────────────────────────── -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalTitle">Task Details</h2>
+      <button class="modal-close" id="modalClose" title="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">Title</label>
+        <input class="modal-input" type="text" id="modalTaskTitle" placeholder="Task title..." />
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Description</label>
+        <textarea class="modal-textarea" id="modalTaskDesc" rows="4" placeholder="Add a description..."></textarea>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Priority</label>
+          <select class="modal-select" id="modalTaskPriority">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Status</label>
+          <select class="modal-select" id="modalTaskStatus">
+            <option value="backlog">Backlog</option>
+            <option value="in-progress">In Progress</option>
+            <option value="review">Review</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Assignee Initial</label>
+          <input class="modal-input modal-input-sm" type="text" id="modalTaskAvatar" maxlength="2" placeholder="A" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Avatar Color</label>
+          <select class="modal-select" id="modalTaskAvatarColor">
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+            <option value="orange">Orange</option>
+            <option value="purple">Purple</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn-delete" id="modalDelete">Delete</button>
+      <div class="modal-footer-right">
+        <button class="modal-btn-cancel" id="modalCancel">Cancel</button>
+        <button class="modal-btn-save" id="modalSave">Save</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="renderer/app.js"></script>

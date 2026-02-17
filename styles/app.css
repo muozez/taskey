@@ -343,6 +343,74 @@ body {
   white-space: nowrap;
 }
 
+/* ── Backlog Reopen Strip ─────────────────────────────── */
+.backlog-reopen {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: width 0.2s, min-width 0.2s, padding 0.2s;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.backlog-reopen.visible {
+  width: 36px;
+  min-width: 36px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.backlog-reopen:hover {
+  background: var(--slate-100);
+}
+
+.backlog-reopen svg {
+  color: var(--text-400);
+  flex-shrink: 0;
+}
+
+.backlog-reopen-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-400);
+  letter-spacing: 0.03em;
+}
+
+/* ── Backlog Add Button ──────────────────────────────── */
+.backlog-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 16px 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-500);
+  background: var(--slate-100);
+  border: 1px dashed var(--slate-300);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+
+.backlog-add-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
 /* ── Board Area ──────────────────────────────────────── */
 .board-area {
   flex: 1;
@@ -802,4 +870,193 @@ kbd {
 .icon svg {
   width: 100%;
   height: 100%;
+}
+
+/* ── Modal ────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-container {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: var(--shadow-2xl);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.15s;
+}
+
+.modal-overlay.open .modal-container {
+  transform: translateY(0) scale(1);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-400);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.modal-close:hover {
+  color: var(--text-800);
+}
+
+.modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.modal-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-400);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.modal-input,
+.modal-textarea,
+.modal-select {
+  width: 100%;
+  background: var(--slate-100);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-900);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modal-input:focus,
+.modal-textarea:focus,
+.modal-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-20);
+}
+
+.modal-input-error {
+  border-color: var(--orange-text) !important;
+  box-shadow: 0 0 0 3px rgba(234,88,12,0.15) !important;
+}
+
+.modal-input-sm {
+  max-width: 80px;
+}
+
+.modal-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+
+.modal-row {
+  display: flex;
+  gap: 12px;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.modal-footer-right {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-btn-save,
+.modal-btn-cancel,
+.modal-btn-delete {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.modal-btn-save {
+  background: var(--primary);
+  color: #fff;
+}
+
+.modal-btn-save:hover {
+  background: #0d37b0;
+}
+
+.modal-btn-cancel {
+  background: var(--slate-100);
+  color: var(--text-600);
+}
+
+.modal-btn-cancel:hover {
+  background: var(--slate-200);
+}
+
+.modal-btn-delete {
+  background: none;
+  color: var(--orange-text);
+  padding: 8px 12px;
+}
+
+.modal-btn-delete:hover {
+  background: var(--orange-bg);
 }
