@@ -35,24 +35,14 @@
 
       <div class="nav-section-title projects">Projects</div>
 
-      <a class="nav-link" href="#" data-project="website-redesign">
-        <span class="nav-link-icon orange">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>
-        </span>
-        Website Redesign
-      </a>
-      <a class="nav-link" href="#" data-project="q4-strategy">
-        <span class="nav-link-icon blue">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>
-        </span>
-        Q4 Strategy
-      </a>
-      <a class="nav-link" href="#" data-project="brand-guidelines">
-        <span class="nav-link-icon purple">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>
-        </span>
-        Brand Guidelines
-      </a>
+      <div id="sidebarProjectList">
+        <!-- Rendered by JS -->
+      </div>
+
+      <button class="sidebar-add-project" id="addProjectBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Project
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -80,6 +70,10 @@
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>
           </span>
           <h2 class="project-title-text" id="projectTitleText">Website Redesign</h2>
+          <button class="project-title-edit" id="projectTitleEdit" title="Rename project">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <input class="project-title-input" id="projectTitleInput" type="text" style="display:none;" />
         </div>
         <div class="search-wrapper">
           <span class="search-icon">
@@ -97,8 +91,31 @@
       </div>
     </header>
 
+    <!-- Dashboard View (shown when Dashboard nav is active) -->
+    <div class="dashboard-view" id="dashboardView" style="display:none;">
+      <div class="dash-header">
+        <h2 class="dash-title">Dashboard</h2>
+        <div class="dash-date" id="dashDate"></div>
+      </div>
+
+      <div class="dash-stats" id="dashStats">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="dash-filters">
+        <button class="dash-filter active" data-filter="today">Today</button>
+        <button class="dash-filter" data-filter="this-week">This Week</button>
+        <button class="dash-filter" data-filter="overdue">Overdue</button>
+        <button class="dash-filter" data-filter="all">All Tasks</button>
+      </div>
+
+      <div class="dash-task-list" id="dashTaskList">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
     <!-- Board Area: Backlog Panel + Kanban -->
-    <div class="board-area">
+    <div class="board-area" id="boardArea">
 
       <!-- Backlog Reopen Strip (visible when collapsed) -->
       <div class="backlog-reopen" id="backlogReopen" title="Open Backlog">
@@ -347,6 +364,40 @@
       <div class="modal-footer-right">
         <button class="modal-btn-cancel" id="modalCancel">Cancel</button>
         <button class="modal-btn-save" id="modalSave">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Project Modal ──────────────────────────────────── -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal-container modal-sm">
+    <div class="modal-header">
+      <h2 class="modal-title" id="projectModalTitle">New Project</h2>
+      <button class="modal-close" id="projectModalClose" title="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">Project Name</label>
+        <input class="modal-input" type="text" id="projectModalName" placeholder="e.g. Mobile App" />
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Color</label>
+        <div class="color-picker" id="colorPicker">
+          <button class="color-swatch orange active" data-color="orange" title="Orange"></button>
+          <button class="color-swatch blue" data-color="blue" title="Blue"></button>
+          <button class="color-swatch green" data-color="green" title="Green"></button>
+          <button class="color-swatch purple" data-color="purple" title="Purple"></button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div></div>
+      <div class="modal-footer-right">
+        <button class="modal-btn-cancel" id="projectModalCancel">Cancel</button>
+        <button class="modal-btn-save" id="projectModalSave">Create</button>
       </div>
     </div>
   </div>

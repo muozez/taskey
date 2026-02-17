@@ -50,6 +50,8 @@ const projectData = {
 };
 
 let currentProject = 'website-redesign';
+let currentView = 'dashboard'; // 'dashboard' or 'project'
+let currentDashFilter = 'today';
 let taskIdCounter = 100;
 
 // ── DOM References ────────────────────────────────────
@@ -58,10 +60,28 @@ const backlogCount = document.getElementById('backlogCount');
 const kanbanColumns = document.getElementById('kanbanColumns');
 const projectTitleText = document.getElementById('projectTitleText');
 const projectTitleIcon = document.getElementById('projectTitleIcon');
+const projectTitleEdit = document.getElementById('projectTitleEdit');
+const projectTitleInput = document.getElementById('projectTitleInput');
 const backlogPanel = document.getElementById('backlogPanel');
 const backlogToggle = document.getElementById('backlogToggle');
 const backlogReopen = document.getElementById('backlogReopen');
 const backlogAddBtn = document.getElementById('backlogAddBtn');
+const boardArea = document.getElementById('boardArea');
+const dashboardView = document.getElementById('dashboardView');
+const dashStats = document.getElementById('dashStats');
+const dashTaskList = document.getElementById('dashTaskList');
+const dashDate = document.getElementById('dashDate');
+const sidebarProjectList = document.getElementById('sidebarProjectList');
+const addProjectBtn = document.getElementById('addProjectBtn');
+
+// Project modal refs
+const projectModal = document.getElementById('projectModal');
+const projectModalTitle = document.getElementById('projectModalTitle');
+const projectModalClose = document.getElementById('projectModalClose');
+const projectModalName = document.getElementById('projectModalName');
+const colorPicker = document.getElementById('colorPicker');
+const projectModalCancel = document.getElementById('projectModalCancel');
+const projectModalSave = document.getElementById('projectModalSave');
 
 // Modal refs
 const taskModal = document.getElementById('taskModal');
@@ -298,14 +318,21 @@ function renderKanban() {
 
 function renderProject(projectId) {
   currentProject = projectId;
+  currentView = 'project';
   const project = projectData[projectId];
+
+  // Show board, hide dashboard
+  boardArea.style.display = '';
+  dashboardView.style.display = 'none';
+  document.querySelector('.command-bar-wrapper').style.display = '';
 
   // Update title bar
   projectTitleText.textContent = project.name;
   projectTitleIcon.className = 'project-title-icon ' + project.color;
+  document.querySelector('.topbar').style.display = '';
 
   // Update sidebar active state
-  document.querySelectorAll('.nav-link[data-project]').forEach(link => {
+  document.querySelectorAll('.sidebar-project-link').forEach(link => {
     link.classList.toggle('active', link.dataset.project === projectId);
   });
   document.querySelectorAll('.nav-link[data-view]').forEach(link => {
@@ -632,21 +659,364 @@ commandInput.addEventListener('keydown', (e) => {
   }
 });
 
-// ── Sidebar Navigation ────────────────────────────────
-document.querySelectorAll('.nav-link[data-project]').forEach(link => {
-  link.addEventListener('click', (e) => {
-    e.preventDefault();
-    renderProject(link.dataset.project);
-  });
-});
+// ── Dashboard ─────────────────────────────────────────
 
-document.querySelectorAll('.nav-link[data-view]').forEach(link => {
-  link.addEventListener('click', (e) => {
-    e.preventDefault();
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    link.classList.add('active');
+function getAllTasks() {
+  const tasks = [];
+  for (const pid of Object.keys(projectData)) {
+    const project = projectData[pid];
+    for (const status of ['backlog', 'in-progress', 'review', 'done']) {
+      project[status].forEach(task => {
+        tasks.push({ ...task, projectId: pid, projectName: project.name, projectColor: project.color, status });
+      });
+    }
+  }
+  return tasks;
+}
+
+function getToday() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function getWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+  monday.setHours(0,0,0,0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23,59,59,999);
+  return { start: monday, end: sunday };
+}
+
+function filterTasks(filter) {
+  const all = getAllTasks();
+  const today = getToday();
+  const week = getWeekRange();
+
+  switch(filter) {
+    case 'today':
+      return all.filter(t => t.dueDate === today && t.status !== 'done');
+    case 'this-week': {
+      return all.filter(t => {
+        if (!t.dueDate || t.status === 'done') return false;
+        const d = new Date(t.dueDate + 'T00:00:00');
+        return d >= week.start && d <= week.end;
+      });
+    }
+    case 'overdue':
+      return all.filter(t => t.dueDate && t.status !== 'done' && isOverdue(t.dueDate));
+    case 'all':
+    default:
+      return all.filter(t => t.status !== 'done');
+  }
+}
+
+function getDashboardStats() {
+  const all = getAllTasks();
+  const today = getToday();
+  return {
+    total: all.length,
+    inProgress: all.filter(t => t.status === 'in-progress').length,
+    completed: all.filter(t => t.status === 'done').length,
+    overdue: all.filter(t => t.dueDate && t.status !== 'done' && isOverdue(t.dueDate)).length,
+    dueToday: all.filter(t => t.dueDate === today && t.status !== 'done').length,
+  };
+}
+
+function showDashboard(filter) {
+  currentView = 'dashboard';
+  if (filter) currentDashFilter = filter;
+
+  // Toggle views
+  boardArea.style.display = 'none';
+  dashboardView.style.display = '';
+  document.querySelector('.command-bar-wrapper').style.display = 'none';
+  document.querySelector('.topbar').style.display = 'none';
+
+  // Update sidebar
+  document.querySelectorAll('.sidebar-project-link').forEach(l => l.classList.remove('active'));
+  document.querySelectorAll('.nav-link[data-view]').forEach(l => {
+    l.classList.toggle('active', l.dataset.view === (currentDashFilter === 'all' ? 'my-tasks' : 'dashboard'));
   });
-});
+
+  // Date display
+  const now = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  dashDate.textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+
+  renderDashStats();
+  renderDashTasks();
+}
+
+function renderDashStats() {
+  const s = getDashboardStats();
+  dashStats.innerHTML = `
+    <div class="dash-stat-card">
+      <div class="dash-stat-value">${s.total}</div>
+      <div class="dash-stat-label">Total Tasks</div>
+    </div>
+    <div class="dash-stat-card accent-blue">
+      <div class="dash-stat-value">${s.inProgress}</div>
+      <div class="dash-stat-label">In Progress</div>
+    </div>
+    <div class="dash-stat-card accent-green">
+      <div class="dash-stat-value">${s.completed}</div>
+      <div class="dash-stat-label">Completed</div>
+    </div>
+    <div class="dash-stat-card accent-orange">
+      <div class="dash-stat-value">${s.overdue}</div>
+      <div class="dash-stat-label">Overdue</div>
+    </div>
+    <div class="dash-stat-card accent-purple">
+      <div class="dash-stat-value">${s.dueToday}</div>
+      <div class="dash-stat-label">Due Today</div>
+    </div>
+  `;
+}
+
+function renderDashTasks() {
+  const tasks = filterTasks(currentDashFilter);
+
+  // Update active filter button
+  document.querySelectorAll('.dash-filter').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === currentDashFilter);
+  });
+
+  if (tasks.length === 0) {
+    dashTaskList.innerHTML = `<div class="dash-empty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-300)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <p>No tasks found for this filter.</p>
+    </div>`;
+    return;
+  }
+
+  // Group by project
+  const groups = {};
+  tasks.forEach(t => {
+    if (!groups[t.projectId]) groups[t.projectId] = { name: t.projectName, color: t.projectColor, tasks: [] };
+    groups[t.projectId].tasks.push(t);
+  });
+
+  let html = '';
+  for (const pid of Object.keys(groups)) {
+    const g = groups[pid];
+    html += `<div class="dash-group">
+      <div class="dash-group-header">
+        <span class="dash-group-dot ${g.color}"></span>
+        <span class="dash-group-name">${g.name}</span>
+        <span class="dash-group-count">${g.tasks.length}</span>
+      </div>`;
+
+    g.tasks.forEach(t => {
+      const priorityClass = t.status === 'done' ? 'done' : t.priority;
+      const overdue = t.dueDate && t.status !== 'done' && isOverdue(t.dueDate);
+      const statusLabels = { 'backlog': 'Backlog', 'in-progress': 'In Progress', 'review': 'Review', 'done': 'Done' };
+
+      html += `<div class="dash-task-row" data-task-id="${t.id}" data-project-id="${pid}">
+        <div class="dash-task-left">
+          <span class="priority-badge sm ${priorityClass}">${t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}</span>
+          <span class="dash-task-title${t.status === 'done' ? ' done-text' : ''}">${t.title}</span>
+        </div>
+        <div class="dash-task-right">
+          <span class="dash-task-status">${statusLabels[t.status]}</span>
+          ${t.dueDate ? `<span class="dash-task-date${overdue ? ' overdue' : ''}">${formatDate(t.dueDate)}</span>` : ''}
+          ${t.avatar ? `<div class="card-avatar sm ${t.avatarColor}">${t.avatar}</div>` : ''}
+        </div>
+      </div>`;
+    });
+
+    html += '</div>';
+  }
+
+  dashTaskList.innerHTML = html;
+
+  // Bind click to open task in project view
+  dashTaskList.querySelectorAll('.dash-task-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const pid = row.dataset.projectId;
+      const tid = row.dataset.taskId;
+      renderProject(pid);
+      setTimeout(() => openTaskModal(tid), 100);
+    });
+  });
+}
+
+function initDashboard() {
+  document.querySelectorAll('.dash-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentDashFilter = btn.dataset.filter;
+      renderDashTasks();
+    });
+  });
+}
+
+// ── Project Create Modal ──────────────────────────────
+let selectedProjectColor = 'orange';
+
+function openProjectModal() {
+  projectModalTitle.textContent = 'New Project';
+  projectModalName.value = '';
+  selectedProjectColor = 'orange';
+  colorPicker.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === 'orange');
+  });
+  projectModal.classList.add('open');
+  projectModalName.focus();
+}
+
+function closeProjectModal() {
+  projectModal.classList.remove('open');
+}
+
+function slugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+function createProject() {
+  const name = projectModalName.value.trim();
+  if (!name) {
+    projectModalName.classList.add('modal-input-error');
+    setTimeout(() => projectModalName.classList.remove('modal-input-error'), 800);
+    return;
+  }
+
+  let slug = slugify(name);
+  // Ensure uniqueness
+  let counter = 1;
+  while (projectData[slug]) {
+    slug = slugify(name) + '-' + counter;
+    counter++;
+  }
+
+  projectData[slug] = {
+    name: name,
+    color: selectedProjectColor,
+    backlog: [],
+    'in-progress': [],
+    'review': [],
+    'done': [],
+  };
+
+  closeProjectModal();
+  renderSidebarProjects();
+  renderProject(slug);
+}
+
+function initProjectModal() {
+  addProjectBtn.addEventListener('click', openProjectModal);
+  projectModalClose.addEventListener('click', closeProjectModal);
+  projectModalCancel.addEventListener('click', closeProjectModal);
+  projectModalSave.addEventListener('click', createProject);
+
+  projectModal.addEventListener('click', (e) => {
+    if (e.target === projectModal) closeProjectModal();
+  });
+
+  colorPicker.querySelectorAll('.color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      selectedProjectColor = swatch.dataset.color;
+      colorPicker.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      swatch.classList.add('active');
+    });
+  });
+
+  projectModalName.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); createProject(); }
+  });
+}
+
+// ── Project Rename ────────────────────────────────────
+
+function initProjectRename() {
+  projectTitleEdit.addEventListener('click', () => {
+    const project = projectData[currentProject];
+    projectTitleText.style.display = 'none';
+    projectTitleEdit.style.display = 'none';
+    projectTitleInput.style.display = '';
+    projectTitleInput.value = project.name;
+    projectTitleInput.focus();
+    projectTitleInput.select();
+  });
+
+  function commitRename() {
+    const newName = projectTitleInput.value.trim();
+    if (newName && projectData[currentProject]) {
+      projectData[currentProject].name = newName;
+      projectTitleText.textContent = newName;
+      renderSidebarProjects();
+    }
+    projectTitleText.style.display = '';
+    projectTitleEdit.style.display = '';
+    projectTitleInput.style.display = 'none';
+  }
+
+  projectTitleInput.addEventListener('blur', commitRename);
+  projectTitleInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+    if (e.key === 'Escape') {
+      projectTitleInput.value = projectData[currentProject].name;
+      commitRename();
+    }
+  });
+}
+
+// ── Sidebar Navigation ────────────────────────────────
+function renderSidebarProjects() {
+  sidebarProjectList.innerHTML = '';
+  const folderSVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>';
+
+  Object.keys(projectData).forEach(pid => {
+    const p = projectData[pid];
+    const a = document.createElement('a');
+    a.className = 'nav-link sidebar-project-link' + (currentView === 'project' && currentProject === pid ? ' active' : '');
+    a.href = '#';
+    a.dataset.project = pid;
+    a.innerHTML = `<span class="nav-link-icon ${p.color}">${folderSVG}</span>${p.name}`;
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      renderProject(pid);
+    });
+
+    // Right-click context menu (simple: delete project)
+    a.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (Object.keys(projectData).length <= 1) return; // keep at least 1
+      if (confirm(`Delete project "${p.name}"?`)) {
+        delete projectData[pid];
+        renderSidebarProjects();
+        if (currentProject === pid) {
+          const firstPid = Object.keys(projectData)[0];
+          if (firstPid) renderProject(firstPid);
+          else showDashboard();
+        }
+      }
+    });
+
+    sidebarProjectList.appendChild(a);
+  });
+}
+
+function bindSidebarNavLinks() {
+  document.querySelectorAll('.nav-link[data-view]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (link.dataset.view === 'dashboard') {
+        showDashboard();
+      } else if (link.dataset.view === 'my-tasks') {
+        showDashboard('all');
+      }
+    });
+  });
+}
 
 // ── Initial Render ────────────────────────────────────
-renderProject('website-redesign');
+renderSidebarProjects();
+bindSidebarNavLinks();
+initProjectModal();
+initProjectRename();
+initDashboard();
+showDashboard();
