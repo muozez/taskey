@@ -245,8 +245,11 @@
       </div>
       <div class="modal-field">
         <label class="modal-label">Description</label>
-        <textarea class="modal-textarea" id="modalTaskDesc" rows="4" placeholder="Add a description..."></textarea>
+        <textarea class="modal-textarea" id="modalTaskDesc" rows="4" placeholder="Add a detailed description..."></textarea>
       </div>
+
+      <div class="modal-separator"></div>
+
       <div class="modal-row">
         <div class="modal-field">
           <label class="modal-label">Priority</label>
@@ -266,6 +269,44 @@
           </select>
         </div>
       </div>
+
+      <div class="modal-separator"></div>
+
+      <div class="modal-section-title">Schedule</div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Due Date</label>
+          <input class="modal-input" type="date" id="modalTaskDueDate" />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Due Time</label>
+          <input class="modal-input" type="time" id="modalTaskDueTime" />
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label class="modal-label">Estimated Duration</label>
+          <select class="modal-select" id="modalTaskDuration">
+            <option value="">No estimate</option>
+            <option value="15m">15 minutes</option>
+            <option value="30m">30 minutes</option>
+            <option value="1h">1 hour</option>
+            <option value="2h">2 hours</option>
+            <option value="4h">4 hours</option>
+            <option value="1d">1 day</option>
+            <option value="2d">2 days</option>
+            <option value="1w">1 week</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Progress (%)</label>
+          <input class="modal-input modal-input-sm" type="number" id="modalTaskProgress" min="0" max="100" placeholder="0" />
+        </div>
+      </div>
+
+      <div class="modal-separator"></div>
+
+      <div class="modal-section-title">People &amp; Tags</div>
       <div class="modal-row">
         <div class="modal-field">
           <label class="modal-label">Assignee Initial</label>
@@ -281,6 +322,25 @@
           </select>
         </div>
       </div>
+      <div class="modal-field">
+        <label class="modal-label">Tags <span class="modal-label-hint">(comma separated)</span></label>
+        <input class="modal-input" type="text" id="modalTaskTags" placeholder="design, urgent, frontend..." />
+      </div>
+
+      <div class="modal-separator"></div>
+
+      <div class="modal-section-title">Checklist</div>
+      <div class="checklist-container" id="checklistContainer"></div>
+      <div class="checklist-add">
+        <input class="modal-input checklist-input" type="text" id="checklistNewItem" placeholder="Add checklist item..." />
+        <button class="checklist-add-btn" id="checklistAddBtn" title="Add item">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-separator"></div>
+
+      <div class="modal-meta" id="modalMeta"></div>
     </div>
     <div class="modal-footer">
       <button class="modal-btn-delete" id="modalDelete">Delete</button>
