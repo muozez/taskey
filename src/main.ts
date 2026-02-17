@@ -1,5 +1,7 @@
 import { app, BrowserWindow } from "electron";
 import * as path from "path";
+import { initDatabase, closeDatabase } from "./database/index";
+import { registerIpcHandlers } from "./ipc/handlers";
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -8,6 +10,7 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, "preload.js"),
     },
   });
 
@@ -15,6 +18,12 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // Initialize SQLite database
+  initDatabase();
+
+  // Register IPC handlers for renderer <-> main process communication
+  registerIpcHandlers();
+
   createWindow();
 
   app.on("activate", () => {
@@ -28,4 +37,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  closeDatabase();
 });

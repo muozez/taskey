@@ -1,5 +1,16 @@
-// ── Project Data Store ─────────────────────────────────
-const projectData = {
+// ── Database API (exposed via preload) ─────────────────
+const db = window.taskey;
+
+// ── Project Data Store (in-memory cache, synced with SQLite) ──
+let projectData = {};
+
+let currentProject = '';
+let currentView = 'dashboard'; // 'dashboard' or 'project'
+let currentDashFilter = 'today';
+let taskIdCounter = 100;
+
+// ── Default seed data (used only on first launch) ──────
+const DEFAULT_SEED_DATA = {
   'website-redesign': {
     name: 'Website Redesign',
     color: 'orange',
@@ -63,11 +74,6 @@ const projectData = {
     'done': [],
   },
 };
-
-let currentProject = 'website-redesign';
-let currentView = 'dashboard'; // 'dashboard' or 'project'
-let currentDashFilter = 'today';
-let taskIdCounter = 100;
 
 // ── Project Templates ─────────────────────────────────
 const projectTemplates = {
@@ -415,35 +421,39 @@ function renderKanban() {
 function renderProject(projectId) {
   currentProject = projectId;
   currentView = 'project';
-  const project = projectData[projectId];
 
-  // Show board, hide dashboard
-  boardArea.style.display = '';
-  dashboardView.style.display = 'none';
-  document.querySelector('.command-bar-wrapper').style.display = '';
+  // Refresh project data from DB, then render
+  refreshProjectData(projectId).then(() => {
+    const project = projectData[projectId];
 
-  // Update title bar
-  projectTitleText.textContent = project.name;
-  if (isNamedColor(project.color)) {
-    projectTitleIcon.className = 'project-title-icon ' + project.color;
-    projectTitleIcon.style.color = '';
-  } else {
-    projectTitleIcon.className = 'project-title-icon';
-    projectTitleIcon.style.color = project.color;
-  }
-  document.querySelector('.topbar').style.display = '';
+    // Show board, hide dashboard
+    boardArea.style.display = '';
+    dashboardView.style.display = 'none';
+    document.querySelector('.command-bar-wrapper').style.display = '';
 
-  // Update sidebar active state
-  document.querySelectorAll('.sidebar-project-link').forEach(link => {
-    link.classList.toggle('active', link.dataset.project === projectId);
+    // Update title bar
+    projectTitleText.textContent = project.name;
+    if (isNamedColor(project.color)) {
+      projectTitleIcon.className = 'project-title-icon ' + project.color;
+      projectTitleIcon.style.color = '';
+    } else {
+      projectTitleIcon.className = 'project-title-icon';
+      projectTitleIcon.style.color = project.color;
+    }
+    document.querySelector('.topbar').style.display = '';
+
+    // Update sidebar active state
+    document.querySelectorAll('.sidebar-project-link').forEach(link => {
+      link.classList.toggle('active', link.dataset.project === projectId);
+    });
+    document.querySelectorAll('.nav-link[data-view]').forEach(link => {
+      link.classList.remove('active');
+    });
+
+    // Render board
+    renderBacklog();
+    renderKanban();
   });
-  document.querySelectorAll('.nav-link[data-view]').forEach(link => {
-    link.classList.remove('active');
-  });
-
-  // Render board
-  renderBacklog();
-  renderKanban();
 }
 
 // ── Task Modal ────────────────────────────────────────
@@ -532,44 +542,52 @@ function saveTask() {
   const tags = modalTaskTags.value.split(',').map(t => t.trim()).filter(Boolean);
   const progressVal = parseInt(modalTaskProgress.value) || 0;
 
+  const taskPayload = {
+    title: title,
+    desc: modalTaskDesc.value.trim(),
+    priority: modalTaskPriority.value,
+    avatar: modalTaskAvatar.value.trim(),
+    avatarColor: modalTaskAvatarColor.value,
+    dueDate: modalTaskDueDate.value,
+    dueTime: modalTaskDueTime.value,
+    duration: modalTaskDuration.value,
+    progress: progressVal,
+    tags: tags,
+    checklist: currentChecklist.map(c => ({...c})),
+  };
+
   if (editingTaskId) {
+    // Update existing task
     const found = findTask(editingTaskId);
     if (!found) return;
 
-    found.task.title = title;
-    found.task.desc = modalTaskDesc.value.trim();
-    found.task.priority = modalTaskPriority.value;
-    found.task.avatar = modalTaskAvatar.value.trim();
-    found.task.avatarColor = modalTaskAvatarColor.value;
-    found.task.dueDate = modalTaskDueDate.value;
-    found.task.dueTime = modalTaskDueTime.value;
-    found.task.duration = modalTaskDuration.value;
-    found.task.progress = progressVal;
-    found.task.tags = tags;
-    found.task.checklist = currentChecklist.map(c => ({...c}));
-
-    if (found.status !== newStatus) {
-      project[found.status].splice(found.index, 1);
-      if (isColumnDone(project, newStatus)) found.task.progress = 100;
-      project[newStatus].push(found.task);
+    const updatePayload = { ...taskPayload, status: newStatus };
+    if (isColumnDone(project, newStatus) && found.status !== newStatus) {
+      updatePayload.progress = 100;
     }
+
+    db.tasks.update(editingTaskId, updatePayload).then(() => {
+      return refreshProjectData(currentProject);
+    }).then(() => {
+      renderBacklog();
+      renderKanban();
+    });
   } else {
-    const newTask = {
+    // Create new task
+    const finalProgress = isColumnDone(project, newStatus) ? 100 : progressVal;
+    const newTaskData = {
       id: generateId(),
-      title: title,
-      desc: modalTaskDesc.value.trim(),
-      priority: modalTaskPriority.value,
-      avatar: modalTaskAvatar.value.trim(),
-      avatarColor: modalTaskAvatarColor.value,
-      dueDate: modalTaskDueDate.value,
-      dueTime: modalTaskDueTime.value,
-      duration: modalTaskDuration.value,
-      progress: isColumnDone(project, newStatus) ? 100 : progressVal,
-      tags: tags,
-      checklist: currentChecklist.map(c => ({...c})),
+      ...taskPayload,
+      progress: finalProgress,
       createdAt: new Date().toISOString(),
     };
-    project[newStatus].push(newTask);
+
+    db.tasks.create(currentProject, newStatus, newTaskData).then(() => {
+      return refreshProjectData(currentProject);
+    }).then(() => {
+      renderBacklog();
+      renderKanban();
+    });
   }
 
   closeTaskModal();
@@ -582,12 +600,13 @@ function deleteTask() {
   const found = findTask(editingTaskId);
   if (!found) return;
 
-  const project = projectData[currentProject];
-  project[found.status].splice(found.index, 1);
-
-  closeTaskModal();
-  renderBacklog();
-  renderKanban();
+  db.tasks.delete(editingTaskId).then(() => {
+    return refreshProjectData(currentProject);
+  }).then(() => {
+    closeTaskModal();
+    renderBacklog();
+    renderKanban();
+  });
 }
 
 // Modal event listeners
@@ -715,21 +734,20 @@ backlogCards.addEventListener('drop', (e) => {
 
 function moveTask(taskId, fromStatus, toStatus) {
   const project = projectData[currentProject];
-  const fromList = project[fromStatus];
-  const taskIndex = fromList.findIndex(t => t.id === taskId);
-  if (taskIndex === -1) return;
+  let newProgress = undefined;
 
-  const [task] = fromList.splice(taskIndex, 1);
   if (isColumnDone(project, toStatus)) {
-    task.progress = 100;
+    newProgress = 100;
   } else if (isColumnDone(project, fromStatus)) {
-    delete task.progress;
+    newProgress = 0;
   }
 
-  project[toStatus].push(task);
-
-  renderBacklog();
-  renderKanban();
+  db.tasks.move(taskId, toStatus, newProgress).then(() => {
+    return refreshProjectData(currentProject);
+  }).then(() => {
+    renderBacklog();
+    renderKanban();
+  });
 }
 
 // ── Backlog Toggle & Reopen ───────────────────────────
@@ -762,9 +780,8 @@ commandInput.addEventListener('keydown', (e) => {
     const text = commandInput.value.trim();
     if (!text) return;
 
-    // Quick-create task in backlog
-    const project = projectData[currentProject];
-    project.backlog.push({
+    // Quick-create task in backlog via DB
+    const newTaskData = {
       id: generateId(),
       title: text,
       desc: '',
@@ -778,10 +795,15 @@ commandInput.addEventListener('keydown', (e) => {
       tags: [],
       checklist: [],
       createdAt: new Date().toISOString(),
+    };
+
+    db.tasks.create(currentProject, 'backlog', newTaskData).then(() => {
+      return refreshProjectData(currentProject);
+    }).then(() => {
+      renderBacklog();
     });
 
     commandInput.value = '';
-    renderBacklog();
   }
 });
 
@@ -877,8 +899,11 @@ function showDashboard(filter) {
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   dashDate.textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
 
-  renderDashStats();
-  renderDashTasks();
+  // Refresh from DB then render
+  refreshAllProjects().then(() => {
+    renderDashStats();
+    renderDashTasks();
+  });
 }
 
 function renderDashStats() {
@@ -1039,23 +1064,13 @@ function createProject() {
   const template = projectTemplates[selectedTemplate];
   const columns = template.columns.map(c => ({...c}));
 
-  const newProject = {
-    name: name,
-    color: selectedProjectColor,
-    columns: columns,
-    backlog: [],
-  };
-
-  // Initialize empty arrays for each column
-  columns.forEach(col => {
-    newProject[col.id] = [];
+  db.projects.create(slug, name, selectedProjectColor, columns).then(() => {
+    return refreshAllProjects();
+  }).then(() => {
+    closeProjectModal();
+    renderSidebarProjects();
+    renderProject(slug);
   });
-
-  projectData[slug] = newProject;
-
-  closeProjectModal();
-  renderSidebarProjects();
-  renderProject(slug);
 }
 
 // ── Column Management ─────────────────────────────────
@@ -1127,18 +1142,11 @@ function addColumn() {
     counter++;
   }
 
-  const newCol = { id: finalId, label: name.trim() };
-
-  // Insert before the done column if one exists
-  const doneIndex = project.columns.findIndex(c => c.isDone);
-  if (doneIndex !== -1) {
-    project.columns.splice(doneIndex, 0, newCol);
-  } else {
-    project.columns.push(newCol);
-  }
-
-  project[finalId] = [];
-  renderKanban();
+  db.columns.add(currentProject, finalId, name.trim(), false).then(() => {
+    return refreshProjectData(currentProject);
+  }).then(() => {
+    renderKanban();
+  });
 }
 
 function renameColumn(columnId) {
@@ -1149,8 +1157,11 @@ function renameColumn(columnId) {
   const newName = prompt('Column name:', col.label);
   if (!newName || !newName.trim()) return;
 
-  col.label = newName.trim();
-  renderKanban();
+  db.columns.rename(currentProject, columnId, newName.trim()).then(() => {
+    return refreshProjectData(currentProject);
+  }).then(() => {
+    renderKanban();
+  });
 }
 
 function deleteColumn(columnId) {
@@ -1166,14 +1177,14 @@ function deleteColumn(columnId) {
   const tasks = project[columnId] || [];
   if (tasks.length > 0) {
     if (!confirm(`This column has ${tasks.length} task(s). They will be moved to Backlog. Continue?`)) return;
-    project.backlog.push(...tasks);
   }
 
-  project.columns.splice(colIndex, 1);
-  delete project[columnId];
-
-  renderBacklog();
-  renderKanban();
+  db.columns.delete(currentProject, columnId).then(() => {
+    return refreshProjectData(currentProject);
+  }).then(() => {
+    renderBacklog();
+    renderKanban();
+  });
 }
 
 function initProjectModal() {
@@ -1245,9 +1256,11 @@ function initProjectRename() {
   function commitRename() {
     const newName = projectTitleInput.value.trim();
     if (newName && projectData[currentProject]) {
-      projectData[currentProject].name = newName;
-      projectTitleText.textContent = newName;
-      renderSidebarProjects();
+      db.projects.update(currentProject, { name: newName }).then(() => {
+        projectData[currentProject].name = newName;
+        projectTitleText.textContent = newName;
+        renderSidebarProjects();
+      });
     }
     projectTitleText.style.display = '';
     projectTitleEdit.style.display = '';
@@ -1288,13 +1301,16 @@ function renderSidebarProjects() {
       e.preventDefault();
       if (Object.keys(projectData).length <= 1) return; // keep at least 1
       if (confirm(`Delete project "${p.name}"?`)) {
-        delete projectData[pid];
-        renderSidebarProjects();
-        if (currentProject === pid) {
-          const firstPid = Object.keys(projectData)[0];
-          if (firstPid) renderProject(firstPid);
-          else showDashboard();
-        }
+        db.projects.delete(pid).then(() => {
+          return refreshAllProjects();
+        }).then(() => {
+          renderSidebarProjects();
+          if (currentProject === pid) {
+            const firstPid = Object.keys(projectData)[0];
+            if (firstPid) renderProject(firstPid);
+            else showDashboard();
+          }
+        });
       }
     });
 
@@ -1315,10 +1331,72 @@ function bindSidebarNavLinks() {
   });
 }
 
+// ── Database ↔ Cache Sync ─────────────────────────────
+
+/**
+ * Loads all projects and their tasks from SQLite into the in-memory cache.
+ */
+async function refreshAllProjects() {
+  const projects = await db.projects.getAll();
+  projectData = {};
+
+  for (const p of projects) {
+    const tasksMap = await db.tasks.getByProject(p.id);
+    projectData[p.id] = {
+      name: p.name,
+      color: p.color,
+      columns: p.columns,
+      backlog: tasksMap['backlog'] || [],
+    };
+    for (const col of p.columns) {
+      projectData[p.id][col.id] = tasksMap[col.id] || [];
+    }
+  }
+}
+
+/**
+ * Refreshes a single project's data from SQLite.
+ */
+async function refreshProjectData(projectId) {
+  const p = await db.projects.get(projectId);
+  if (!p) return;
+
+  const tasksMap = await db.tasks.getByProject(projectId);
+  projectData[projectId] = {
+    name: p.name,
+    color: p.color,
+    columns: p.columns,
+    backlog: tasksMap['backlog'] || [],
+  };
+  for (const col of p.columns) {
+    projectData[projectId][col.id] = tasksMap[col.id] || [];
+  }
+}
+
 // ── Initial Render ────────────────────────────────────
-renderSidebarProjects();
-bindSidebarNavLinks();
-initProjectModal();
-initProjectRename();
-initDashboard();
-showDashboard();
+async function initApp() {
+  // Check if DB has data; if not, seed with defaults
+  const hasData = await db.hasData();
+  if (!hasData) {
+    console.log('[Taskey] First launch — seeding database with default data...');
+    await db.seed(DEFAULT_SEED_DATA);
+  }
+
+  // Load all data from SQLite into memory cache
+  await refreshAllProjects();
+
+  // Set initial project
+  const projectIds = Object.keys(projectData);
+  if (projectIds.length > 0) {
+    currentProject = projectIds[0];
+  }
+
+  renderSidebarProjects();
+  bindSidebarNavLinks();
+  initProjectModal();
+  initProjectRename();
+  initDashboard();
+  showDashboard();
+}
+
+initApp();
