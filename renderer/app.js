@@ -193,7 +193,7 @@ let currentChecklist = [];
 // ── Helpers ───────────────────────────────────────────
 
 function generateId() {
-  return 'task-' + (++taskIdCounter);
+  return 'task-' + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
 }
 
 function getProjectStatuses(project) {
@@ -775,24 +775,157 @@ backlogAddBtn.addEventListener('click', () => {
 
 // ── Command Bar Task Creation ─────────────────────────
 const commandInput = document.querySelector('.command-input');
+const commandSyntaxTooltip = document.getElementById('commandSyntaxTooltip');
+
+// Show/hide syntax tooltip on focus
+commandInput.addEventListener('focus', () => {
+  commandSyntaxTooltip.classList.add('visible');
+});
+commandInput.addEventListener('blur', () => {
+  setTimeout(() => commandSyntaxTooltip.classList.remove('visible'), 150);
+});
+
+// Last-used quick-add settings (persisted per session, remembered between tasks)
+let lastQuickSettings = {
+  priority: 'medium',
+  avatarColor: 'blue',
+  tags: [],
+  duration: '',
+};
+
+/**
+ * Parses command bar input with special syntax:
+ *   :t60  or :t2h  → estimate time (60m, 2h, etc.)
+ *   $red            → task avatar color
+ *   #soft,test      → tags: soft, test
+ *   !high / !low    → priority
+ *   :sw1            → move last 1 backlog item(s) to first column
+ *   :sw2            → move last 2
+ *   :swa            → move all
+ *
+ * Everything else is the task title.
+ * Last-used settings are remembered for subsequent tasks.
+ */
+function parseCommandInput(raw) {
+  const result = {
+    title: '',
+    isSwitch: false,
+    switchCount: 0,
+    settings: { ...lastQuickSettings },
+    hasExplicitSettings: false,
+  };
+
+  // Check for :sw command first
+  const swMatch = raw.match(/^:sw(a|\d+)$/i);
+  if (swMatch) {
+    result.isSwitch = true;
+    result.switchCount = swMatch[1].toLowerCase() === 'a' ? -1 : parseInt(swMatch[1], 10);
+    return result;
+  }
+
+  let remaining = raw;
+
+  // Parse :tNUM or :tNUMu (time estimate)
+  remaining = remaining.replace(/:t(\d+)(m|h|d|w)?/gi, (_, num, unit) => {
+    unit = (unit || 'm').toLowerCase();
+    const val = parseInt(num, 10);
+    if (unit === 'm') {
+      result.settings.duration = val <= 30 ? val + 'm' : val + 'm';
+    } else {
+      result.settings.duration = val + unit;
+    }
+    result.hasExplicitSettings = true;
+    return '';
+  });
+
+  // Parse $color (avatar color)
+  remaining = remaining.replace(/\$(\w+)/g, (_, color) => {
+    result.settings.avatarColor = color.toLowerCase();
+    result.hasExplicitSettings = true;
+    return '';
+  });
+
+  // Parse #tag1,tag2 (tags)
+  remaining = remaining.replace(/#([\w,]+)/g, (_, tagStr) => {
+    result.settings.tags = tagStr.split(',').map(t => t.trim()).filter(Boolean);
+    result.hasExplicitSettings = true;
+    return '';
+  });
+
+  // Parse !priority
+  remaining = remaining.replace(/!(high|medium|low)/gi, (_, p) => {
+    result.settings.priority = p.toLowerCase();
+    result.hasExplicitSettings = true;
+    return '';
+  });
+
+  result.title = remaining.replace(/\s+/g, ' ').trim();
+  return result;
+}
+
+/**
+ * Handles :sw commands — moves N backlog items to the first column.
+ */
+async function handleSwitchCommand(count) {
+  const project = projectData[currentProject];
+  if (!project || !project.backlog || project.backlog.length === 0) return;
+
+  const firstCol = project.columns[0];
+  if (!firstCol) return;
+
+  const total = project.backlog.length;
+  const n = count === -1 ? total : Math.min(count, total);
+
+  // Take the last N items from backlog (most recently added)
+  const toMove = project.backlog.slice(-n);
+
+  for (const task of toMove) {
+    const newProgress = firstCol.isDone ? 100 : undefined;
+    await db.tasks.move(task.id, firstCol.id, newProgress);
+  }
+
+  await refreshProjectData(currentProject);
+  renderBacklog();
+  renderKanban();
+}
+
 commandInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
-    const text = commandInput.value.trim();
-    if (!text) return;
+    const raw = commandInput.value.trim();
+    if (!raw) return;
 
-    // Quick-create task in backlog via DB
+    const parsed = parseCommandInput(raw);
+
+    // Handle :sw command
+    if (parsed.isSwitch) {
+      commandInput.value = '';
+      handleSwitchCommand(parsed.switchCount);
+      return;
+    }
+
+    // Must have a title to create a task
+    if (!parsed.title) {
+      commandInput.value = '';
+      return;
+    }
+
+    // Remember settings for next time
+    if (parsed.hasExplicitSettings) {
+      lastQuickSettings = { ...parsed.settings };
+    }
+
     const newTaskData = {
       id: generateId(),
-      title: text,
+      title: parsed.title,
       desc: '',
-      priority: 'medium',
+      priority: parsed.settings.priority,
       avatar: '',
-      avatarColor: 'blue',
+      avatarColor: parsed.settings.avatarColor,
       dueDate: '',
       dueTime: '',
-      duration: '',
+      duration: parsed.settings.duration,
       progress: 0,
-      tags: [],
+      tags: parsed.settings.tags,
       checklist: [],
       createdAt: new Date().toISOString(),
     };
@@ -804,6 +937,29 @@ commandInput.addEventListener('keydown', (e) => {
     });
 
     commandInput.value = '';
+  }
+});
+
+// ── Focus command bar on empty-area click or Enter ────
+document.addEventListener('keydown', (e) => {
+  // Only when project view is active, no modal is open, and no input is focused
+  if (currentView !== 'project') return;
+  if (taskModal.classList.contains('open')) return;
+  if (projectModal.classList.contains('open')) return;
+  const active = document.activeElement;
+  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    commandInput.focus();
+  }
+});
+
+// Click on empty board area focuses command bar
+boardArea.addEventListener('click', (e) => {
+  // Only if click target is the board area itself (not a child element)
+  if (e.target === boardArea || e.target.classList.contains('kanban-columns') || e.target.classList.contains('column-cards')) {
+    commandInput.focus();
   }
 });
 
