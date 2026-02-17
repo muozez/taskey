@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 import * as projectRepo from "../database/repositories/projects";
 import * as taskRepo from "../database/repositories/tasks";
 import * as changelogRepo from "../database/repositories/changelog";
+import * as settingsRepo from "../database/repositories/settings";
 import { getDatabase } from "../database/index";
 
 /**
@@ -195,6 +196,64 @@ export function registerIpcHandlers(): void {
       });
 
       transaction();
+      return true;
+    }
+  );
+
+  // ── Settings Handlers ───────────────────────────────────
+
+  ipcMain.handle("db:settings:getAll", () => {
+    return settingsRepo.getAllSettings();
+  });
+
+  ipcMain.handle("db:settings:get", (_event, key: string) => {
+    return settingsRepo.getSetting(key);
+  });
+
+  ipcMain.handle(
+    "db:settings:set",
+    (_event, key: string, value: string) => {
+      settingsRepo.setSetting(key, value);
+      return true;
+    }
+  );
+
+  ipcMain.handle(
+    "db:settings:setMultiple",
+    (_event, settings: Record<string, string>) => {
+      settingsRepo.setSettings(settings);
+      return true;
+    }
+  );
+
+  ipcMain.handle("db:settings:delete", (_event, key: string) => {
+    settingsRepo.deleteSetting(key);
+    return true;
+  });
+
+  // ── Command Alias Handlers ────────────────────────────
+
+  ipcMain.handle("db:aliases:getAll", () => {
+    return settingsRepo.getAllAliases();
+  });
+
+  ipcMain.handle(
+    "db:aliases:set",
+    (_event, alias: string, command: string) => {
+      settingsRepo.setAlias(alias, command);
+      return true;
+    }
+  );
+
+  ipcMain.handle("db:aliases:delete", (_event, alias: string) => {
+    settingsRepo.deleteAlias(alias);
+    return true;
+  });
+
+  ipcMain.handle(
+    "db:aliases:setAll",
+    (_event, aliases: Record<string, string>) => {
+      settingsRepo.setAllAliases(aliases);
       return true;
     }
   );

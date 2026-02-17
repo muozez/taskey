@@ -84,14 +84,26 @@ export function closeDatabase(): void {
  * from version N to version N+1.
  */
 function runMigrations(
-  _database: Database.Database,
+  database: Database.Database,
   fromVersion: number,
   toVersion: number
 ): void {
   console.log(
     `[Taskey DB] Running migrations from v${fromVersion} to v${toVersion}`
   );
-  // Future migrations go here:
-  // if (fromVersion < 2) migrateV1toV2(database);
-  // if (fromVersion < 3) migrateV2toV3(database);
+  if (fromVersion < 2) {
+    console.log("[Taskey DB] Migrating to v2: adding user_settings and command_aliases tables");
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE TABLE IF NOT EXISTS command_aliases (
+        alias TEXT PRIMARY KEY,
+        command TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+  }
 }

@@ -59,4 +59,25 @@ contextBridge.exposeInMainWorld("taskey", {
   // ── Seed ──────────────────────────────────────────────
   hasData: () => ipcRenderer.invoke("db:hasData"),
   seed: (data: any) => ipcRenderer.invoke("db:seed", data),
+
+  // ── Settings ────────────────────────────────────────────
+  settings: {
+    getAll: () => ipcRenderer.invoke("db:settings:getAll"),
+    get: (key: string) => ipcRenderer.invoke("db:settings:get", key),
+    set: (key: string, value: string) =>
+      ipcRenderer.invoke("db:settings:set", key, value),
+    setMultiple: (settings: Record<string, string>) =>
+      ipcRenderer.invoke("db:settings:setMultiple", settings),
+    delete: (key: string) => ipcRenderer.invoke("db:settings:delete", key),
+  },
+
+  // ── Command Aliases ─────────────────────────────────────
+  aliases: {
+    getAll: () => ipcRenderer.invoke("db:aliases:getAll"),
+    set: (alias: string, command: string) =>
+      ipcRenderer.invoke("db:aliases:set", alias, command),
+    delete: (alias: string) => ipcRenderer.invoke("db:aliases:delete", alias),
+    setAll: (aliases: Record<string, string>) =>
+      ipcRenderer.invoke("db:aliases:setAll", aliases),
+  },
 });

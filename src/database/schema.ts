@@ -10,7 +10,7 @@
  * - session_id groups related changes into logical "commits"
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const CREATE_TABLES = `
   -- ── Projects ────────────────────────────────────────────
@@ -93,6 +93,20 @@ export const CREATE_TABLES = `
     ON change_log(synced);
   CREATE INDEX IF NOT EXISTS idx_changelog_session
     ON change_log(session_id);
+
+  -- ── User Settings ────────────────────────────────────────
+  CREATE TABLE IF NOT EXISTS user_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- ── Command Aliases ─────────────────────────────────────
+  CREATE TABLE IF NOT EXISTS command_aliases (
+    alias TEXT PRIMARY KEY,
+    command TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
   -- ── Schema version tracking ─────────────────────────────
   CREATE TABLE IF NOT EXISTS schema_meta (

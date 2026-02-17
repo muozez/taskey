@@ -9,6 +9,15 @@ let currentView = 'dashboard'; // 'dashboard' or 'project'
 let currentDashFilter = 'today';
 let taskIdCounter = 100;
 
+// ── User Profile (loaded from DB) ─────────────────────
+let userProfile = {
+  firstName: '',
+  lastName: '',
+};
+
+// ── Command Aliases (loaded from DB) ──────────────────
+let commandAliases = {}; // { ':taşı': ':mv', ... }
+
 // ── Default seed data (used only on first launch) ──────
 const DEFAULT_SEED_DATA = {
   'website-redesign': {
@@ -149,6 +158,9 @@ const dashboardView = document.getElementById('dashboardView');
 const dashStats = document.getElementById('dashStats');
 const dashTaskList = document.getElementById('dashTaskList');
 const dashDate = document.getElementById('dashDate');
+const dashGreeting = document.getElementById('dashGreeting');
+const dashProjectOverview = document.getElementById('dashProjectOverview');
+const dashUpcoming = document.getElementById('dashUpcoming');
 const sidebarProjectList = document.getElementById('sidebarProjectList');
 const addProjectBtn = document.getElementById('addProjectBtn');
 
@@ -645,6 +657,7 @@ taskModal.addEventListener('click', (e) => {
 // Close modal on Escape, save on Ctrl+Enter
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    if (document.getElementById('settingsModal').classList.contains('open')) { closeSettingsModal(); return; }
     if (projectModal.classList.contains('open')) { closeProjectModal(); return; }
     if (taskModal.classList.contains('open')) { closeTaskModal(); return; }
   }
@@ -1167,7 +1180,9 @@ commandInput.addEventListener('keydown', (e) => {
     // Save to history
     pushHistory(raw);
 
-    const parsed = parseCommandInput(raw);
+    // Resolve aliases before parsing
+    const resolved = resolveAliases(raw);
+    const parsed = parseCommandInput(resolved);
     commandInput.value = '';
 
     // Standalone command
@@ -1315,15 +1330,26 @@ function showDashboard(filter) {
     l.classList.toggle('active', l.dataset.view === (currentDashFilter === 'all' ? 'my-tasks' : 'dashboard'));
   });
 
+  // Greeting
+  const hour = new Date().getHours();
+  let greetText = 'İyi Günler';
+  if (hour < 12) greetText = 'Günaydın';
+  else if (hour < 18) greetText = 'İyi Günler';
+  else greetText = 'İyi Akşamlar';
+  const displayName = userProfile.firstName || 'Kullanıcı';
+  dashGreeting.textContent = `${greetText}, ${displayName}!`;
+
   // Date display
   const now = new Date();
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  dashDate.textContent = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+  const days = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  const months = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  dashDate.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
 
   // Refresh from DB then render
   refreshAllProjects().then(() => {
     renderDashStats();
+    renderDashProjectOverview();
+    renderDashUpcoming();
     renderDashTasks();
   });
 }
@@ -1433,6 +1459,318 @@ function initDashboard() {
       renderDashTasks();
     });
   });
+}
+
+// ── Dashboard: Project Overview ─────────────────────────
+
+function renderDashProjectOverview() {
+  if (!dashProjectOverview) return;
+  const projectIds = Object.keys(projectData);
+  if (projectIds.length === 0) {
+    dashProjectOverview.innerHTML = '<div class="dash-upcoming-empty">Henüz proje yok.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const pid of projectIds) {
+    const p = projectData[pid];
+    const allStatuses = getProjectStatuses(p);
+    let totalTasks = 0;
+    let doneTasks = 0;
+    let inProgressTasks = 0;
+    let backlogTasks = (p.backlog || []).length;
+    totalTasks += backlogTasks;
+
+    for (const col of p.columns) {
+      const tasks = p[col.id] || [];
+      totalTasks += tasks.length;
+      if (col.isDone) doneTasks += tasks.length;
+      else inProgressTasks += tasks.length;
+    }
+
+    const progress = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+    const accentClass = isNamedColor(p.color) ? p.color : '';
+    const accentStyle = isNamedColor(p.color) ? '' : ` style="background: ${p.color}"`;
+    const progressColor = isNamedColor(p.color) ? getColorValue(p.color) : p.color;
+
+    html += `<div class="dash-project-card" data-project-id="${pid}">
+      <div class="dash-project-card-accent ${accentClass}"${accentStyle}></div>
+      <div class="dash-project-name">${p.name}</div>
+      <div class="dash-project-stats">
+        <div class="dash-project-stat">
+          <div class="dash-project-stat-value">${backlogTasks}</div>
+          <div class="dash-project-stat-label">Backlog</div>
+        </div>
+        <div class="dash-project-stat">
+          <div class="dash-project-stat-value">${inProgressTasks}</div>
+          <div class="dash-project-stat-label">Aktif</div>
+        </div>
+        <div class="dash-project-stat">
+          <div class="dash-project-stat-value">${doneTasks}</div>
+          <div class="dash-project-stat-label">Tamamlanan</div>
+        </div>
+      </div>
+      <div class="dash-project-progress">
+        <div class="dash-project-progress-bar">
+          <div class="dash-project-progress-fill" style="width: ${progress}%; background: ${progressColor};"></div>
+        </div>
+        <div class="dash-project-progress-label">%${progress} tamamlandı</div>
+      </div>
+    </div>`;
+  }
+
+  dashProjectOverview.innerHTML = html;
+
+  // Click to navigate to project
+  dashProjectOverview.querySelectorAll('.dash-project-card').forEach(card => {
+    card.addEventListener('click', () => {
+      renderProject(card.dataset.projectId);
+    });
+  });
+}
+
+// ── Dashboard: Upcoming Tasks ─────────────────────────
+
+function renderDashUpcoming() {
+  if (!dashUpcoming) return;
+  const all = getAllTasks();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Get upcoming tasks (due in the next 7 days, not done)
+  const upcoming = all
+    .filter(t => t.dueDate && !t.isDoneTask)
+    .map(t => ({
+      ...t,
+      dateObj: new Date(t.dueDate + 'T00:00:00')
+    }))
+    .sort((a, b) => a.dateObj - b.dateObj)
+    .slice(0, 8);
+
+  if (upcoming.length === 0) {
+    dashUpcoming.innerHTML = '<div class="dash-upcoming-empty">Yaklaşan görev yok.</div>';
+    return;
+  }
+
+  const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  let html = '';
+  for (const t of upcoming) {
+    const d = t.dateObj;
+    const overdueClass = d < today ? ' overdue' : '';
+    html += `<div class="dash-upcoming-item${overdueClass}" data-task-id="${t.id}" data-project-id="${t.projectId}">
+      <div class="dash-upcoming-date">
+        <span class="dash-upcoming-day">${d.getDate()}</span>
+        <span class="dash-upcoming-month">${months[d.getMonth()]}</span>
+      </div>
+      <div class="dash-upcoming-info">
+        <div class="dash-upcoming-title">${t.title}</div>
+        <div class="dash-upcoming-project">${t.projectName}</div>
+      </div>
+      <span class="priority-badge sm ${t.priority}">${t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}</span>
+    </div>`;
+  }
+
+  dashUpcoming.innerHTML = html;
+
+  dashUpcoming.querySelectorAll('.dash-upcoming-item').forEach(row => {
+    row.addEventListener('click', () => {
+      const pid = row.dataset.projectId;
+      const tid = row.dataset.taskId;
+      renderProject(pid);
+      setTimeout(() => openTaskModal(tid), 100);
+    });
+  });
+}
+
+// ── Welcome Modal ─────────────────────────────────────
+
+function showWelcomeModal() {
+  const modal = document.getElementById('welcomeModal');
+  modal.classList.add('open');
+
+  const firstNameInput = document.getElementById('welcomeFirstName');
+  const lastNameInput = document.getElementById('welcomeLastName');
+  const saveBtn = document.getElementById('welcomeSave');
+
+  firstNameInput.focus();
+
+  saveBtn.addEventListener('click', async () => {
+    const firstName = firstNameInput.value.trim();
+    const lastName = lastNameInput.value.trim();
+    if (!firstName) {
+      firstNameInput.classList.add('modal-input-error');
+      setTimeout(() => firstNameInput.classList.remove('modal-input-error'), 800);
+      return;
+    }
+    userProfile.firstName = firstName;
+    userProfile.lastName = lastName;
+
+    await db.settings.setMultiple({
+      'user.firstName': firstName,
+      'user.lastName': lastName,
+    });
+
+    updateSidebarUser();
+    modal.classList.remove('open');
+    showDashboard();
+  });
+
+  // Enter on inputs
+  lastNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveBtn.click(); }
+  });
+  firstNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); lastNameInput.focus(); }
+  });
+}
+
+// ── Settings Modal ────────────────────────────────────
+
+let settingsAliasesTemp = {};
+
+function openSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  modal.classList.add('open');
+
+  document.getElementById('settingsFirstName').value = userProfile.firstName;
+  document.getElementById('settingsLastName').value = userProfile.lastName;
+  settingsAliasesTemp = { ...commandAliases };
+  renderAliasListInSettings();
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+function renderAliasListInSettings() {
+  const container = document.getElementById('aliasListContainer');
+  const entries = Object.entries(settingsAliasesTemp);
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="dash-upcoming-empty" style="padding:12px;">Henüz özel komut tanımlanmamış.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const [alias, cmd] of entries) {
+    html += `<div class="alias-row">
+      <span class="alias-from">${alias}</span>
+      <span class="alias-arrow">→</span>
+      <span class="alias-to">${cmd}</span>
+      <button class="alias-remove" data-alias="${alias}" title="Kaldır">&times;</button>
+    </div>`;
+  }
+  container.innerHTML = html;
+
+  container.querySelectorAll('.alias-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete settingsAliasesTemp[btn.dataset.alias];
+      renderAliasListInSettings();
+    });
+  });
+}
+
+function initSettingsModal() {
+  const closeBtn = document.getElementById('settingsModalClose');
+  const cancelBtn = document.getElementById('settingsModalCancel');
+  const saveBtn = document.getElementById('settingsModalSave');
+  const addAliasBtn = document.getElementById('addAliasBtn');
+  const settingsModal = document.getElementById('settingsModal');
+
+  // Open via sidebar settings button
+  document.querySelector('.user-settings').addEventListener('click', openSettingsModal);
+
+  closeBtn.addEventListener('click', closeSettingsModal);
+  cancelBtn.addEventListener('click', closeSettingsModal);
+
+  // Overlay click to close
+  let settingsMouseDownTarget = null;
+  settingsModal.addEventListener('mousedown', (e) => { settingsMouseDownTarget = e.target; });
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal && settingsMouseDownTarget === settingsModal) closeSettingsModal();
+    settingsMouseDownTarget = null;
+  });
+
+  // Add alias
+  addAliasBtn.addEventListener('click', () => {
+    const fromInput = document.getElementById('newAliasFrom');
+    const toInput = document.getElementById('newAliasTo');
+    let alias = fromInput.value.trim();
+    let cmd = toInput.value.trim();
+    if (!alias || !cmd) return;
+    // Ensure they start with ':'
+    if (!alias.startsWith(':')) alias = ':' + alias;
+    if (!cmd.startsWith(':')) cmd = ':' + cmd;
+    settingsAliasesTemp[alias] = cmd;
+    fromInput.value = '';
+    toInput.value = '';
+    renderAliasListInSettings();
+  });
+
+  document.getElementById('newAliasTo').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addAliasBtn.click(); }
+  });
+
+  // Save
+  saveBtn.addEventListener('click', async () => {
+    const firstName = document.getElementById('settingsFirstName').value.trim();
+    const lastName = document.getElementById('settingsLastName').value.trim();
+    if (!firstName) {
+      document.getElementById('settingsFirstName').classList.add('modal-input-error');
+      setTimeout(() => document.getElementById('settingsFirstName').classList.remove('modal-input-error'), 800);
+      return;
+    }
+
+    userProfile.firstName = firstName;
+    userProfile.lastName = lastName;
+    await db.settings.setMultiple({
+      'user.firstName': firstName,
+      'user.lastName': lastName,
+    });
+
+    commandAliases = { ...settingsAliasesTemp };
+    await db.aliases.setAll(commandAliases);
+
+    updateSidebarUser();
+    closeSettingsModal();
+
+    // Refresh dashboard if visible
+    if (currentView === 'dashboard') showDashboard();
+  });
+
+  // Escape to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && settingsModal.classList.contains('open')) {
+      closeSettingsModal();
+    }
+  });
+}
+
+// ── Sidebar User Display ──────────────────────────────
+
+function updateSidebarUser() {
+  const nameEl = document.querySelector('.user-name');
+  const avatarEl = document.querySelector('.user-avatar');
+  const planEl = document.querySelector('.user-plan');
+  const fullName = [userProfile.firstName, userProfile.lastName].filter(Boolean).join(' ') || 'Kullanıcı';
+  nameEl.textContent = fullName;
+  avatarEl.textContent = (userProfile.firstName || 'K').charAt(0).toUpperCase();
+  planEl.textContent = 'Pro Plan';
+}
+
+// ── Command Alias Resolution ──────────────────────────
+
+function resolveAliases(raw) {
+  // Check if the input starts with a known alias
+  for (const [alias, cmd] of Object.entries(commandAliases)) {
+    // Exact alias match or alias followed by space + args
+    if (raw === alias) {
+      return cmd;
+    }
+    if (raw.startsWith(alias + ' ')) {
+      return cmd + raw.slice(alias.length);
+    }
+  }
+  return raw;
 }
 
 // ── Project Create Modal ──────────────────────────────
@@ -1804,6 +2142,14 @@ async function initApp() {
     await db.seed(DEFAULT_SEED_DATA);
   }
 
+  // Load user profile from settings
+  const settings = await db.settings.getAll();
+  userProfile.firstName = settings['user.firstName'] || '';
+  userProfile.lastName = settings['user.lastName'] || '';
+
+  // Load command aliases
+  commandAliases = await db.aliases.getAll();
+
   // Load all data from SQLite into memory cache
   await refreshAllProjects();
 
@@ -1818,7 +2164,15 @@ async function initApp() {
   initProjectModal();
   initProjectRename();
   initDashboard();
-  showDashboard();
+  initSettingsModal();
+  updateSidebarUser();
+
+  // If no user profile, show welcome modal
+  if (!userProfile.firstName) {
+    showWelcomeModal();
+  } else {
+    showDashboard();
+  }
 }
 
 initApp();
