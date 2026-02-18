@@ -1,12 +1,14 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, nativeImage } from "electron";
 import * as path from "path";
 import { initDatabase, closeDatabase } from "./database/index";
 import { registerIpcHandlers } from "./ipc/handlers";
 
 function createWindow(): void {
+  const iconPath = path.join(__dirname, "..", "public", "logo256.png");
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    icon: nativeImage.createFromPath(iconPath),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

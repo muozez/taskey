@@ -728,12 +728,18 @@ body {
 }
 
 /* Progress Bar */
+.progress-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .progress-bar {
-  width: 100%;
+  flex: 1;
   height: 6px;
-  background: var(--slate-100);
+  background: var(--slate-200);
   border-radius: var(--radius-full);
-  margin-top: 16px;
   overflow: hidden;
 }
 
@@ -742,6 +748,16 @@ body {
   background: var(--primary);
   border-radius: var(--radius-full);
   transition: width 0.3s;
+  min-width: 4px;
+}
+
+.progress-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-400);
+  white-space: nowrap;
+  min-width: 28px;
+  text-align: right;
 }
 
 /* Card Hover Overlay */
@@ -2201,7 +2217,7 @@ kbd {
 
 .toast-notification {
   position: fixed;
-  bottom: 24px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
   display: flex;

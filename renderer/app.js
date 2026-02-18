@@ -354,7 +354,7 @@ function createTaskCardHTML(task, isDone) {
     <div class="${titleClass}">${task.title}</div>
     ${task.desc ? `<div class="card-desc">${task.desc}</div>` : ''}
     ${buildCardMeta(task, isDone)}
-    ${(task.progress && task.progress > 0 && !isDone) ? `<div class="progress-bar"><div class="progress-fill" style="width: ${task.progress}%;"></div></div>` : ''}
+    ${(task.progress && task.progress > 0 && !isDone) ? `<div class="progress-bar-wrapper"><div class="progress-bar"><div class="progress-fill" style="width: ${task.progress}%;"></div></div><span class="progress-label">${task.progress}%</span></div>` : ''}
   `;
 
   // Click to open detail modal (ignore if dragging)
