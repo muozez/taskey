@@ -46,6 +46,6 @@ jobs:
         with:
           name: release-${{ matrix.os }}
           path: |
-            dist/*.deb
-            dist/*.rpm
-            dist/*.exe
+            release/*.deb
+            release/*.rpm
+            release/*.exe
