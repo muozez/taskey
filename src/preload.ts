@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld("taskey", {
       ipcRenderer.invoke("db:columns:rename", projectId, columnId, newLabel),
     delete: (projectId: string, columnId: string) =>
       ipcRenderer.invoke("db:columns:delete", projectId, columnId),
+    reorder: (projectId: string, columnIds: string[]) =>
+      ipcRenderer.invoke("db:columns:reorder", projectId, columnIds),
   },
 
   // ── Tasks ─────────────────────────────────────────────

@@ -78,6 +78,14 @@ export function registerIpcHandlers(): void {
     }
   );
 
+  ipcMain.handle(
+    "db:columns:reorder",
+    (_event, projectId: string, columnIds: string[]) => {
+      projectRepo.reorderColumns(projectId, columnIds);
+      return true;
+    }
+  );
+
   // ── Task Handlers ─────────────────────────────────────
 
   ipcMain.handle("db:tasks:getByProject", (_event, projectId: string) => {

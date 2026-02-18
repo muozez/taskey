@@ -294,122 +294,121 @@
 
 <!-- ── Task Detail Modal ──────────────────────────────── -->
 <div class="modal-overlay" id="taskModal">
-  <div class="modal-container">
+  <div class="modal-container modal-task-detail">
     <div class="modal-header">
-      <h2 class="modal-title" id="modalTitle">Task Details</h2>
-      <button class="modal-close" id="modalClose" title="Close">
+      <h2 class="modal-title" id="modalTitle">Görev Detayı</h2>
+      <button class="modal-close" id="modalClose" title="Kapat">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="modal-body">
-      <div class="modal-field">
-        <label class="modal-label">Title</label>
-        <input class="modal-input" type="text" id="modalTaskTitle" placeholder="Task title..." />
-      </div>
-      <div class="modal-field">
-        <label class="modal-label">Description</label>
-        <textarea class="modal-textarea" id="modalTaskDesc" rows="4" placeholder="Add a detailed description..."></textarea>
-      </div>
-
-      <div class="modal-separator"></div>
-
-      <div class="modal-row">
+    <div class="modal-body modal-body-split">
+      <!-- Left: Main content -->
+      <div class="modal-main">
         <div class="modal-field">
-          <label class="modal-label">Priority</label>
-          <select class="modal-select" id="modalTaskPriority">
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
+          <input class="modal-input modal-title-input" type="text" id="modalTaskTitle" placeholder="Görev başlığı..." />
         </div>
         <div class="modal-field">
-          <label class="modal-label">Status</label>
-          <select class="modal-select" id="modalTaskStatus">
-            <option value="backlog">Backlog</option>
-            <option value="in-progress">In Progress</option>
-            <option value="review">Review</option>
-            <option value="done">Done</option>
-          </select>
+          <label class="modal-label">Açıklama</label>
+          <textarea class="modal-textarea" id="modalTaskDesc" rows="3" placeholder="Detaylı bir açıklama ekleyin..."></textarea>
         </div>
+
+        <div class="modal-field">
+          <label class="modal-label">Yapılacaklar</label>
+          <div class="checklist-container" id="checklistContainer"></div>
+          <div class="checklist-add">
+            <input class="modal-input checklist-input" type="text" id="checklistNewItem" placeholder="Yeni madde ekle..." />
+            <button class="checklist-add-btn" id="checklistAddBtn" title="Ekle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-field">
+          <label class="modal-label">Etiketler <span class="modal-label-hint">(virgülle ayırın)</span></label>
+          <input class="modal-input" type="text" id="modalTaskTags" placeholder="design, urgent, frontend..." />
+        </div>
+
+        <div class="modal-meta" id="modalMeta"></div>
       </div>
 
-      <div class="modal-separator"></div>
-
-      <div class="modal-section-title">Schedule</div>
-      <div class="modal-row">
-        <div class="modal-field">
-          <label class="modal-label">Due Date</label>
-          <input class="modal-input" type="date" id="modalTaskDueDate" />
+      <!-- Right: Properties sidebar -->
+      <div class="modal-sidebar">
+        <div class="modal-sidebar-section">
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Durum</label>
+            <select class="modal-select" id="modalTaskStatus">
+              <option value="backlog">Backlog</option>
+            </select>
+          </div>
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Öncelik</label>
+            <select class="modal-select" id="modalTaskPriority">
+              <option value="low">Düşük</option>
+              <option value="medium">Orta</option>
+              <option value="high">Yüksek</option>
+            </select>
+          </div>
         </div>
-        <div class="modal-field">
-          <label class="modal-label">Due Time</label>
-          <input class="modal-input" type="time" id="modalTaskDueTime" />
+
+        <div class="modal-sidebar-section">
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Tarih</label>
+            <input class="modal-input" type="date" id="modalTaskDueDate" />
+          </div>
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Saat</label>
+            <input class="modal-input" type="time" id="modalTaskDueTime" />
+          </div>
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Süre</label>
+            <select class="modal-select" id="modalTaskDuration">
+              <option value="">Yok</option>
+              <option value="15m">15 dk</option>
+              <option value="30m">30 dk</option>
+              <option value="1h">1 saat</option>
+              <option value="2h">2 saat</option>
+              <option value="4h">4 saat</option>
+              <option value="1d">1 gün</option>
+              <option value="2d">2 gün</option>
+              <option value="1w">1 hafta</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-sidebar-section">
+          <div class="modal-sidebar-row">
+            <label class="modal-label">İlerleme</label>
+            <div class="modal-progress-group">
+              <input class="modal-progress-range" type="range" id="modalTaskProgressRange" min="0" max="100" value="0" />
+              <input class="modal-input modal-input-sm" type="number" id="modalTaskProgress" min="0" max="100" placeholder="0" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-sidebar-section">
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Atanan</label>
+            <div class="modal-avatar-group">
+              <input class="modal-input modal-input-sm" type="text" id="modalTaskAvatar" maxlength="2" placeholder="A" />
+              <select class="modal-select modal-select-color" id="modalTaskAvatarColor">
+                <option value="blue">Mavi</option>
+                <option value="green">Yeşil</option>
+                <option value="orange">Turuncu</option>
+                <option value="purple">Mor</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="modal-row">
-        <div class="modal-field">
-          <label class="modal-label">Estimated Duration</label>
-          <select class="modal-select" id="modalTaskDuration">
-            <option value="">No estimate</option>
-            <option value="15m">15 minutes</option>
-            <option value="30m">30 minutes</option>
-            <option value="1h">1 hour</option>
-            <option value="2h">2 hours</option>
-            <option value="4h">4 hours</option>
-            <option value="1d">1 day</option>
-            <option value="2d">2 days</option>
-            <option value="1w">1 week</option>
-          </select>
-        </div>
-        <div class="modal-field">
-          <label class="modal-label">Progress (%)</label>
-          <input class="modal-input modal-input-sm" type="number" id="modalTaskProgress" min="0" max="100" placeholder="0" />
-        </div>
-      </div>
-
-      <div class="modal-separator"></div>
-
-      <div class="modal-section-title">People &amp; Tags</div>
-      <div class="modal-row">
-        <div class="modal-field">
-          <label class="modal-label">Assignee Initial</label>
-          <input class="modal-input modal-input-sm" type="text" id="modalTaskAvatar" maxlength="2" placeholder="A" />
-        </div>
-        <div class="modal-field">
-          <label class="modal-label">Avatar Color</label>
-          <select class="modal-select" id="modalTaskAvatarColor">
-            <option value="blue">Blue</option>
-            <option value="green">Green</option>
-            <option value="orange">Orange</option>
-            <option value="purple">Purple</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-field">
-        <label class="modal-label">Tags <span class="modal-label-hint">(comma separated)</span></label>
-        <input class="modal-input" type="text" id="modalTaskTags" placeholder="design, urgent, frontend..." />
-      </div>
-
-      <div class="modal-separator"></div>
-
-      <div class="modal-section-title">Checklist</div>
-      <div class="checklist-container" id="checklistContainer"></div>
-      <div class="checklist-add">
-        <input class="modal-input checklist-input" type="text" id="checklistNewItem" placeholder="Add checklist item..." />
-        <button class="checklist-add-btn" id="checklistAddBtn" title="Add item">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </button>
-      </div>
-
-      <div class="modal-separator"></div>
-
-      <div class="modal-meta" id="modalMeta"></div>
     </div>
     <div class="modal-footer">
-      <button class="modal-btn-delete" id="modalDelete">Delete</button>
+      <button class="modal-btn-delete" id="modalDelete">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Sil
+      </button>
       <div class="modal-footer-right">
-        <button class="modal-btn-cancel" id="modalCancel">Cancel</button>
-        <button class="modal-btn-save" id="modalSave">Save</button>
+        <button class="modal-btn-cancel" id="modalCancel">İptal</button>
+        <button class="modal-btn-save" id="modalSave">Kaydet</button>
       </div>
     </div>
   </div>

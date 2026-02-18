@@ -340,3 +340,24 @@ export function deleteColumn(projectId: string, columnId: string): void {
 
   transaction();
 }
+
+/**
+ * Reorder columns for a project.
+ */
+export function reorderColumns(
+  projectId: string,
+  columnIds: string[]
+): void {
+  const db = getDatabase();
+  const updateOrder = db.prepare(
+    "UPDATE columns SET sort_order = ? WHERE id = ? AND project_id = ?"
+  );
+
+  const transaction = db.transaction(() => {
+    columnIds.forEach((colId, idx) => {
+      updateOrder.run(idx, colId, projectId);
+    });
+  });
+
+  transaction();
+}

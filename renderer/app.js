@@ -191,6 +191,7 @@ const modalTaskDueDate = document.getElementById('modalTaskDueDate');
 const modalTaskDueTime = document.getElementById('modalTaskDueTime');
 const modalTaskDuration = document.getElementById('modalTaskDuration');
 const modalTaskProgress = document.getElementById('modalTaskProgress');
+const modalTaskProgressRange = document.getElementById('modalTaskProgressRange');
 const modalTaskTags = document.getElementById('modalTaskTags');
 const checklistContainer = document.getElementById('checklistContainer');
 const checklistNewItem = document.getElementById('checklistNewItem');
@@ -625,7 +626,7 @@ function openTaskModal(taskId) {
   if (found) {
     editingTaskId = taskId;
     editingTaskStatus = found.status;
-    modalTitle.textContent = 'Edit Task';
+    modalTitle.textContent = 'Görev Düzenle';
     modalTaskTitle.value = found.task.title;
     modalTaskDesc.value = found.task.desc || '';
     modalTaskPriority.value = found.task.priority;
@@ -635,7 +636,8 @@ function openTaskModal(taskId) {
     modalTaskDueDate.value = found.task.dueDate || '';
     modalTaskDueTime.value = found.task.dueTime || '';
     modalTaskDuration.value = found.task.duration || '';
-    modalTaskProgress.value = found.task.progress || '';
+    modalTaskProgress.value = found.task.progress || 0;
+    modalTaskProgressRange.value = found.task.progress || 0;
     modalTaskTags.value = (found.task.tags || []).join(', ');
     currentChecklist = (found.task.checklist || []).map(c => ({...c}));
     modalDelete.style.display = 'inline-flex';
@@ -652,7 +654,7 @@ function openTaskModal(taskId) {
   } else {
     editingTaskId = null;
     editingTaskStatus = null;
-    modalTitle.textContent = 'New Task';
+    modalTitle.textContent = 'Yeni Görev';
     modalTaskTitle.value = '';
     modalTaskDesc.value = '';
     modalTaskPriority.value = 'medium';
@@ -662,7 +664,8 @@ function openTaskModal(taskId) {
     modalTaskDueDate.value = '';
     modalTaskDueTime.value = '';
     modalTaskDuration.value = '';
-    modalTaskProgress.value = '';
+    modalTaskProgress.value = 0;
+    modalTaskProgressRange.value = 0;
     modalTaskTags.value = '';
     currentChecklist = [];
     modalDelete.style.display = 'none';
@@ -765,6 +768,14 @@ modalClose.addEventListener('click', closeTaskModal);
 modalCancel.addEventListener('click', closeTaskModal);
 modalSave.addEventListener('click', saveTask);
 modalDelete.addEventListener('click', deleteTask);
+
+// Progress range ↔ number sync
+modalTaskProgressRange.addEventListener('input', () => {
+  modalTaskProgress.value = modalTaskProgressRange.value;
+});
+modalTaskProgress.addEventListener('input', () => {
+  modalTaskProgressRange.value = modalTaskProgress.value;
+});
 
 // Checklist add
 checklistAddBtn.addEventListener('click', () => {
@@ -1991,6 +2002,41 @@ function showToast(message, type = 'info') {
   }, 2500);
 }
 
+function showConfirmToast(message, onConfirm) {
+  const existing = document.querySelector('.toast-notification');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.className = 'toast-notification toast-confirm';
+  toast.innerHTML = `
+    <span class="toast-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+    <span class="toast-msg">${message}</span>
+    <button class="toast-btn toast-btn-confirm">Evet</button>
+    <button class="toast-btn toast-btn-cancel">İptal</button>
+  `;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('toast-visible'));
+
+  toast.querySelector('.toast-btn-confirm').addEventListener('click', () => {
+    toast.remove();
+    onConfirm();
+  });
+  toast.querySelector('.toast-btn-cancel').addEventListener('click', () => {
+    toast.classList.remove('toast-visible');
+    toast.classList.add('toast-hiding');
+    setTimeout(() => toast.remove(), 300);
+  });
+
+  // Auto-dismiss after 8 seconds
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.classList.remove('toast-visible');
+      toast.classList.add('toast-hiding');
+      setTimeout(() => toast.remove(), 300);
+    }
+  }, 8000);
+}
+
 // ── Command Alias Resolution ──────────────────────────
 
 function resolveAliases(raw) {
@@ -2108,13 +2154,35 @@ function initColumnMenus() {
       menu.innerHTML = `
         <button class="column-dropdown-item" data-action="rename" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Rename
+          Yeniden Adlandır
+        </button>
+        <button class="column-dropdown-item" data-action="move-left" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Sola Taşı
+        </button>
+        <button class="column-dropdown-item" data-action="move-right" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          Sağa Taşı
         </button>
         <button class="column-dropdown-item danger" data-action="delete" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          Delete Column
+          Kolonu Sil
         </button>
       `;
+
+      // Disable move buttons at edges
+      const project = projectData[currentProject];
+      const colIdx = project.columns.findIndex(c => c.id === columnId);
+      if (colIdx === 0) {
+        menu.querySelector('[data-action="move-left"]').disabled = true;
+        menu.querySelector('[data-action="move-left"]').style.opacity = '0.35';
+        menu.querySelector('[data-action="move-left"]').style.pointerEvents = 'none';
+      }
+      if (colIdx === project.columns.length - 1) {
+        menu.querySelector('[data-action="move-right"]').disabled = true;
+        menu.querySelector('[data-action="move-right"]').style.opacity = '0.35';
+        menu.querySelector('[data-action="move-right"]').style.pointerEvents = 'none';
+      }
 
       btn.parentElement.style.position = 'relative';
       btn.parentElement.appendChild(menu);
@@ -2123,6 +2191,16 @@ function initColumnMenus() {
       menu.querySelector('[data-action="rename"]').addEventListener('click', () => {
         closeColumnMenu();
         renameColumn(columnId);
+      });
+
+      menu.querySelector('[data-action="move-left"]').addEventListener('click', () => {
+        closeColumnMenu();
+        moveColumn(columnId, -1);
+      });
+
+      menu.querySelector('[data-action="move-right"]').addEventListener('click', () => {
+        closeColumnMenu();
+        moveColumn(columnId, 1);
       });
 
       menu.querySelector('[data-action="delete"]').addEventListener('click', () => {
@@ -2138,24 +2216,54 @@ function initColumnMenus() {
 }
 
 function addColumn() {
-  const name = prompt('Column name:');
-  if (!name || !name.trim()) return;
+  // Replace the Add Column button with an inline input
+  const addColEl = kanbanColumns.querySelector('.kanban-add-column');
+  if (!addColEl) return;
 
-  const project = projectData[currentProject];
-  let id = slugify(name.trim());
+  const input = document.createElement('input');
+  input.className = 'column-inline-input';
+  input.type = 'text';
+  input.placeholder = 'Kolon adı...';
+  input.style.cssText = 'width:180px;padding:8px 12px;font-size:13px;font-weight:600;border:2px solid var(--primary);border-radius:8px;outline:none;font-family:inherit;background:var(--white);';
 
-  // Ensure unique id
-  let counter = 1;
-  let finalId = id;
-  while (project.columns.some(c => c.id === finalId) || finalId === 'backlog') {
-    finalId = id + '-' + counter;
-    counter++;
+  addColEl.innerHTML = '';
+  addColEl.appendChild(input);
+  input.focus();
+
+  function commitAdd() {
+    const name = input.value.trim();
+    if (!name) {
+      // Restore button
+      renderKanban();
+      return;
+    }
+
+    const project = projectData[currentProject];
+    let id = slugify(name);
+    let counter = 1;
+    let finalId = id;
+    while (project.columns.some(c => c.id === finalId) || finalId === 'backlog') {
+      finalId = id + '-' + counter;
+      counter++;
+    }
+
+    db.columns.add(currentProject, finalId, name, false).then(() => {
+      return refreshProjectData(currentProject);
+    }).then(() => {
+      renderKanban();
+      showToast(`"${name}" kolonu oluşturuldu`, 'success');
+    });
   }
 
-  db.columns.add(currentProject, finalId, name.trim(), false).then(() => {
-    return refreshProjectData(currentProject);
-  }).then(() => {
-    renderKanban();
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitAdd(); }
+    if (e.key === 'Escape') { renderKanban(); }
+  });
+  input.addEventListener('blur', () => {
+    // Small delay to allow Enter to fire first
+    setTimeout(() => {
+      if (document.activeElement !== input) commitAdd();
+    }, 100);
   });
 }
 
@@ -2164,14 +2272,64 @@ function renameColumn(columnId) {
   const col = project.columns.find(c => c.id === columnId);
   if (!col) return;
 
-  const newName = prompt('Column name:', col.label);
-  if (!newName || !newName.trim()) return;
+  // Find the column title element and replace with inline input
+  const colEl = kanbanColumns.querySelector(`.kanban-column[data-column="${columnId}"]`);
+  if (!colEl) return;
+  const titleEl = colEl.querySelector('.column-title');
+  if (!titleEl) return;
 
-  db.columns.rename(currentProject, columnId, newName.trim()).then(() => {
-    return refreshProjectData(currentProject);
-  }).then(() => {
-    renderKanban();
+  const input = document.createElement('input');
+  input.className = 'column-inline-input';
+  input.type = 'text';
+  input.value = col.label;
+  input.style.cssText = 'width:140px;padding:4px 8px;font-size:13px;font-weight:600;border:2px solid var(--primary);border-radius:6px;outline:none;font-family:inherit;background:var(--white);';
+
+  titleEl.style.display = 'none';
+  titleEl.parentElement.insertBefore(input, titleEl);
+  input.focus();
+  input.select();
+
+  function commitRename() {
+    const newName = input.value.trim();
+    if (!newName || newName === col.label) {
+      input.remove();
+      titleEl.style.display = '';
+      return;
+    }
+
+    db.columns.rename(currentProject, columnId, newName).then(() => {
+      return refreshProjectData(currentProject);
+    }).then(() => {
+      renderKanban();
+      showToast(`Kolon "${newName}" olarak yeniden adlandırıldı`, 'success');
+    });
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+    if (e.key === 'Escape') { input.remove(); titleEl.style.display = ''; }
   });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      if (document.activeElement !== input) commitRename();
+    }, 100);
+  });
+}
+
+async function moveColumn(columnId, direction) {
+  const project = projectData[currentProject];
+  const colIds = project.columns.map(c => c.id);
+  const idx = colIds.indexOf(columnId);
+  if (idx === -1) return;
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= colIds.length) return;
+
+  // Swap
+  [colIds[idx], colIds[newIdx]] = [colIds[newIdx], colIds[idx]];
+
+  await db.columns.reorder(currentProject, colIds);
+  await refreshProjectData(currentProject);
+  renderKanban();
 }
 
 function deleteColumn(columnId) {
@@ -2180,20 +2338,24 @@ function deleteColumn(columnId) {
   if (colIndex === -1) return;
 
   if (project.columns.length <= 1) {
-    alert('Cannot delete the last column.');
+    showToast('Son kolon silinemez', 'error');
     return;
   }
 
   const tasks = project[columnId] || [];
-  if (tasks.length > 0) {
-    if (!confirm(`This column has ${tasks.length} task(s). They will be moved to Backlog. Continue?`)) return;
-  }
+  const msg = tasks.length > 0
+    ? `Bu kolonda ${tasks.length} görev var. Backlog'a taşınacak. Emin misiniz?`
+    : 'Bu kolon silinecek. Emin misiniz?';
 
-  db.columns.delete(currentProject, columnId).then(() => {
-    return refreshProjectData(currentProject);
-  }).then(() => {
-    renderBacklog();
-    renderKanban();
+  // Show confirmation inline
+  showConfirmToast(msg, () => {
+    db.columns.delete(currentProject, columnId).then(() => {
+      return refreshProjectData(currentProject);
+    }).then(() => {
+      renderBacklog();
+      renderKanban();
+      showToast('Kolon silindi', 'success');
+    });
   });
 }
 
