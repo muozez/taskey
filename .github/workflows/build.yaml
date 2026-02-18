@@ -5,9 +5,15 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  release:
+  build:
     runs-on: ${{ matrix.os }}
+
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
     strategy:
       fail-fast: false
@@ -33,19 +39,10 @@ jobs:
       - name: Compile TypeScript
         run: npm run build
 
-      - name: Build Electron App (Linux)
+      - name: Build & Publish Electron App (Linux)
         if: runner.os == 'Linux'
-        run: npx electron-builder --linux deb rpm
+        run: npx electron-builder --linux deb rpm --publish always
 
-      - name: Build Electron App (Windows)
+      - name: Build & Publish Electron App (Windows)
         if: runner.os == 'Windows'
-        run: npx electron-builder --win nsis
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-${{ matrix.os }}
-          path: |
-            release/*.deb
-            release/*.rpm
-            release/*.exe
+        run: npx electron-builder --win nsis --publish always
