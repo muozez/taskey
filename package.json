@@ -12,7 +12,10 @@
     "url": "git+https://github.com/muozez/taskey.git"
   },
   "keywords": [],
-  "author": "",
+  "author": {
+    "name": "muozez",
+    "email": "muozez@users.noreply.github.com"
+  },
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
@@ -20,11 +23,46 @@
   },
   "homepage": "https://github.com/muozez/taskey#readme",
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@types/better-sqlite3": "^7.6.13",
     "electron": "^40.4.1",
+    "electron-builder": "^26.7.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2"
+  },
+  "build": {
+    "appId": "com.taskey.app",
+    "productName": "taskey",
+    "directories": {
+      "output": "release"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "muozez",
+        "repo": "taskey",
+        "releaseType": "release"
+      }
+    ],
+    "files": [
+      "dist/**/*",
+      "renderer/**/*",
+      "styles/**/*",
+      "index.html",
+      "package.json",
+      "public/**/*"
+    ],
+    "linux": {
+      "target": ["deb", "rpm"],
+      "category": "Utility",
+      "icon": "public/logo256.png",
+      "maintainer": "muozez"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "public/logo32.ico"
+    }
   }
 }
