@@ -66,7 +66,7 @@ export const CREATE_TABLES = `
   --   • synced tracks push status to remote (0 = pending, 1 = synced)
   CREATE TABLE IF NOT EXISTS change_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp TEXT NOT NULL DEFAULT (datetime('now', 'utc')),
+    timestamp TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
     user_id TEXT NOT NULL DEFAULT 'local',
     device_id TEXT NOT NULL DEFAULT 'local',
     session_id TEXT DEFAULT NULL,
