@@ -14,10 +14,12 @@
   --border: #e2e8f0;
   --text-900: #0f172a;
   --text-800: #1e293b;
+  --text-700: #334155;
   --text-600: #475569;
   --text-500: #64748b;
   --text-400: #94a3b8;
   --text-300: #cbd5e1;
+  --slate-50: #f8fafc;
   --slate-100: #f1f5f9;
   --slate-200: #e2e8f0;
   --slate-300: #cbd5e1;
@@ -1113,6 +1115,9 @@ kbd {
 
 .modal-container::-webkit-scrollbar {
   display: none;
+}
+
+.modal-container {
   transform: translateY(8px) scale(0.98);
   transition: transform 0.15s;
 }
@@ -2517,11 +2522,7 @@ kbd {
   line-height: 1.4;
 }
 
-/* ── Command bar focus glow ──────────────────────────── */
-
-.command-bar.focused {
-  box-shadow: 0 0 0 2px var(--primary-20);
-}
+/* ── Command bar focus glow ── (merged into main .command-bar.focused rule) ── */
 
 /* ── Alias hint above command bar ─────────────────────── */
 
