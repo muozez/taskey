@@ -112,6 +112,18 @@ export function getAllTasks(): (TaskData & { projectId: string; status: string }
 }
 
 /**
+ * Validates that the given status is a valid column for the project.
+ * Returns true if the status is 'backlog' or matches a known column id.
+ */
+function isValidStatus(db: ReturnType<typeof getDatabase>, projectId: string, status: string): boolean {
+  if (status === 'backlog') return true;
+  const col = db
+    .prepare("SELECT 1 FROM columns WHERE project_id = ? AND id = ?")
+    .get(projectId, status);
+  return !!col;
+}
+
+/**
  * Create a new task.
  */
 export function createTask(
@@ -120,6 +132,11 @@ export function createTask(
   data: Partial<TaskData> & { id: string; title: string }
 ): TaskData {
   const db = getDatabase();
+
+  if (!isValidStatus(db, projectId, status)) {
+    throw new Error(`Invalid status "${status}" for project "${projectId}"`);
+  }
+
   const now = new Date().toISOString();
 
   const maxOrder = (
@@ -289,6 +306,10 @@ export function moveTask(
     .prepare("SELECT * FROM tasks WHERE id = ?")
     .get(taskId) as TaskRow | undefined;
   if (!existing) return;
+
+  if (!isValidStatus(db, existing.project_id, newStatus)) {
+    throw new Error(`Invalid status "${newStatus}" for project "${existing.project_id}"`);
+  }
 
   const now = new Date().toISOString();
 

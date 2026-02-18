@@ -4,6 +4,60 @@ import { contextBridge, ipcRenderer } from "electron";
  * Preload script – runs in an isolated context before the renderer.
  * Exposes a safe `window.taskey` API using contextBridge.
  */
+
+interface ColumnDef {
+  id: string;
+  label: string;
+  isDone?: boolean;
+}
+
+interface ChecklistItem {
+  text: string;
+  done: boolean;
+}
+
+interface TaskInput {
+  id: string;
+  title: string;
+  desc?: string;
+  priority?: string;
+  avatar?: string;
+  avatarColor?: string;
+  dueDate?: string;
+  dueTime?: string;
+  duration?: string;
+  progress?: number;
+  tags?: string[];
+  checklist?: ChecklistItem[];
+  createdAt?: string;
+  status?: string;
+}
+
+interface TaskUpdate {
+  title?: string;
+  desc?: string;
+  priority?: string;
+  avatar?: string;
+  avatarColor?: string;
+  dueDate?: string;
+  dueTime?: string;
+  duration?: string;
+  progress?: number;
+  tags?: string[];
+  checklist?: ChecklistItem[];
+  status?: string;
+}
+
+interface SeedData {
+  [projectId: string]: {
+    name: string;
+    color: string;
+    columns: ColumnDef[];
+    backlog?: TaskInput[];
+    [columnId: string]: unknown;
+  };
+}
+
 contextBridge.exposeInMainWorld("taskey", {
   // ── Projects ──────────────────────────────────────────
   projects: {
@@ -13,7 +67,7 @@ contextBridge.exposeInMainWorld("taskey", {
       id: string,
       name: string,
       color: string,
-      columns: { id: string; label: string; isDone?: boolean }[]
+      columns: ColumnDef[]
     ) => ipcRenderer.invoke("db:projects:create", id, name, color, columns),
     update: (id: string, updates: { name?: string; color?: string }) =>
       ipcRenderer.invoke("db:projects:update", id, updates),
@@ -38,9 +92,9 @@ contextBridge.exposeInMainWorld("taskey", {
       ipcRenderer.invoke("db:tasks:getByProject", projectId),
     get: (taskId: string) => ipcRenderer.invoke("db:tasks:get", taskId),
     getAll: () => ipcRenderer.invoke("db:tasks:getAll"),
-    create: (projectId: string, status: string, data: any) =>
+    create: (projectId: string, status: string, data: TaskInput) =>
       ipcRenderer.invoke("db:tasks:create", projectId, status, data),
-    update: (taskId: string, updates: any) =>
+    update: (taskId: string, updates: TaskUpdate) =>
       ipcRenderer.invoke("db:tasks:update", taskId, updates),
     move: (taskId: string, newStatus: string, newProgress?: number) =>
       ipcRenderer.invoke("db:tasks:move", taskId, newStatus, newProgress),
@@ -60,7 +114,7 @@ contextBridge.exposeInMainWorld("taskey", {
 
   // ── Seed ──────────────────────────────────────────────
   hasData: () => ipcRenderer.invoke("db:hasData"),
-  seed: (data: any) => ipcRenderer.invoke("db:seed", data),
+  seed: (data: SeedData) => ipcRenderer.invoke("db:seed", data),
 
   // ── Settings ────────────────────────────────────────────
   settings: {

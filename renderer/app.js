@@ -208,7 +208,23 @@ let currentChecklist = [];
 // ── Helpers ───────────────────────────────────────────
 
 function generateId() {
-  return 'task-' + crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+  // Prefer crypto.randomUUID when available
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return 'task-' + crypto.randomUUID().replace(/-/g, '');
+  }
+
+  // Fallback: use crypto.getRandomValues if available
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    return 'task-' + hex;
+  }
+
+  // Last-resort fallback: time + random (lower entropy but widely supported)
+  const timePart = Date.now().toString(36);
+  const randomPart = Math.random().toString(36).slice(2);
+  return 'task-' + timePart + randomPart;
 }
 
 function getProjectStatuses(project) {
@@ -277,10 +293,21 @@ function getAllTasksFromMemory() {
   return results;
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function highlightMatch(text, query) {
-  if (!query) return text;
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
+  if (!query) return escapeHtml(text);
+  const safeText = escapeHtml(text);
+  const escaped = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return safeText.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
 }
 
 function performSearch(query) {
@@ -309,15 +336,15 @@ function performSearch(query) {
   const limited = matches.slice(0, 12);
 
   searchResults.innerHTML = limited.map((task, i) => `
-    <div class="search-result-item" data-task-id="${task.id}" data-project-id="${task.projectId}" data-index="${i}">
-      <div class="search-result-priority ${task.priority}"></div>
+    <div class="search-result-item" data-task-id="${escapeHtml(task.id)}" data-project-id="${escapeHtml(task.projectId)}" data-index="${i}">
+      <div class="search-result-priority ${escapeHtml(task.priority)}"></div>
       <div class="search-result-info">
         <div class="search-result-title">${highlightMatch(task.title, query)}</div>
         <div class="search-result-meta">
-          <span class="search-result-project">${task.projectName}</span>
+          <span class="search-result-project">${escapeHtml(task.projectName)}</span>
           <span>·</span>
-          <span class="search-result-status">${task.statusLabel}</span>
-          ${task.tags && task.tags.length > 0 ? `<span>· ${task.tags.join(', ')}</span>` : ''}
+          <span class="search-result-status">${escapeHtml(task.statusLabel)}</span>
+          ${task.tags && task.tags.length > 0 ? `<span>· ${escapeHtml(task.tags.join(', '))}</span>` : ''}
         </div>
       </div>
     </div>
@@ -723,8 +750,12 @@ function saveTask() {
     db.tasks.update(editingTaskId, updatePayload).then(() => {
       return refreshProjectData(currentProject);
     }).then(() => {
+      closeTaskModal();
       renderBacklog();
       renderKanban();
+    }).catch((err) => {
+      console.error('Failed to update task', err);
+      showToast('Görev güncellenemedi', 'error');
     });
   } else {
     // Create new task
@@ -739,14 +770,14 @@ function saveTask() {
     db.tasks.create(currentProject, newStatus, newTaskData).then(() => {
       return refreshProjectData(currentProject);
     }).then(() => {
+      closeTaskModal();
       renderBacklog();
       renderKanban();
+    }).catch((err) => {
+      console.error('Failed to create task', err);
+      showToast('Görev oluşturulamadı', 'error');
     });
   }
-
-  closeTaskModal();
-  renderBacklog();
-  renderKanban();
 }
 
 function deleteTask() {
@@ -760,6 +791,9 @@ function deleteTask() {
     closeTaskModal();
     renderBacklog();
     renderKanban();
+  }).catch((err) => {
+    console.error('Failed to delete task', err);
+    showToast('Görev silinemedi', 'error');
   });
 }
 
@@ -910,6 +944,9 @@ function moveTask(taskId, fromStatus, toStatus) {
   }).then(() => {
     renderBacklog();
     renderKanban();
+  }).catch((err) => {
+    console.error('Failed to move task', err);
+    showToast('Görev taşınamadı', 'error');
   });
 }
 
@@ -1240,7 +1277,7 @@ async function cmdDelete(query) {
   }
   if (matches.length === 0) return;
   if (matches.length > 1) {
-    if (!confirm(`${matches.length} task found matching "${query}". Delete all?`)) return;
+    if (!confirm(`"${query}" ile eşleşen ${matches.length} görev bulundu. Hepsini silmek istiyor musun?`)) return;
   }
   for (const task of matches) {
     await db.tasks.delete(task.id);
@@ -1275,7 +1312,7 @@ async function cmdDeleteColumn(name) {
   if (project.columns.length <= 1) return;
   const tasks = project[col.id] || [];
   if (tasks.length > 0) {
-    if (!confirm(`"${col.label}" has ${tasks.length} task(s). They'll move to Backlog. Continue?`)) return;
+    if (!confirm(`"${col.label}" sütununda ${tasks.length} görev var. Görevler Backlog'a taşınacak. Devam edilsin mi?`)) return;
   }
   await db.columns.delete(currentProject, col.id);
   await refreshProjectData(currentProject);
@@ -1422,6 +1459,9 @@ commandInput.addEventListener('keydown', (e) => {
     }).then(() => {
       renderBacklog();
       showToast(`"${parsed.title}" eklendi`, 'success');
+    }).catch((err) => {
+      console.error('Failed to create task', err);
+      showToast(`Görev oluşturulamadı: "${parsed.title}"`, 'error');
     });
   }
 });
@@ -1530,7 +1570,7 @@ function showDashboard(filter) {
   // Update sidebar
   document.querySelectorAll('.sidebar-project-link').forEach(l => l.classList.remove('active'));
   document.querySelectorAll('.nav-link[data-view]').forEach(l => {
-    l.classList.toggle('active', l.dataset.view === (currentDashFilter === 'all' ? 'my-tasks' : 'dashboard'));
+    l.classList.toggle('active', l.dataset.view === 'dashboard');
   });
 
   // Greeting
@@ -1989,7 +2029,14 @@ function showToast(message, type = 'info') {
     info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
   };
 
-  toast.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-msg">${message}</span>`;
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'toast-icon';
+  iconSpan.innerHTML = icons[type] || icons.info;
+  const msgSpan = document.createElement('span');
+  msgSpan.className = 'toast-msg';
+  msgSpan.textContent = message;
+  toast.appendChild(iconSpan);
+  toast.appendChild(msgSpan);
   document.body.appendChild(toast);
 
   // Trigger animation
@@ -2008,20 +2055,30 @@ function showConfirmToast(message, onConfirm) {
 
   const toast = document.createElement('div');
   toast.className = 'toast-notification toast-confirm';
-  toast.innerHTML = `
-    <span class="toast-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
-    <span class="toast-msg">${message}</span>
-    <button class="toast-btn toast-btn-confirm">Evet</button>
-    <button class="toast-btn toast-btn-cancel">İptal</button>
-  `;
+  const confirmIcon = document.createElement('span');
+  confirmIcon.className = 'toast-icon';
+  confirmIcon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+  const confirmMsg = document.createElement('span');
+  confirmMsg.className = 'toast-msg';
+  confirmMsg.textContent = message;
+  const btnConfirm = document.createElement('button');
+  btnConfirm.className = 'toast-btn toast-btn-confirm';
+  btnConfirm.textContent = 'Evet';
+  const btnCancel = document.createElement('button');
+  btnCancel.className = 'toast-btn toast-btn-cancel';
+  btnCancel.textContent = 'İptal';
+  toast.appendChild(confirmIcon);
+  toast.appendChild(confirmMsg);
+  toast.appendChild(btnConfirm);
+  toast.appendChild(btnCancel);
   document.body.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add('toast-visible'));
 
-  toast.querySelector('.toast-btn-confirm').addEventListener('click', () => {
+  btnConfirm.addEventListener('click', () => {
     toast.remove();
     onConfirm();
   });
-  toast.querySelector('.toast-btn-cancel').addEventListener('click', () => {
+  btnCancel.addEventListener('click', () => {
     toast.classList.remove('toast-visible');
     toast.classList.add('toast-hiding');
     setTimeout(() => toast.remove(), 300);
@@ -2472,7 +2529,7 @@ function renderSidebarProjects() {
     a.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       if (Object.keys(projectData).length <= 1) return; // keep at least 1
-      if (confirm(`Delete project "${p.name}"?`)) {
+      if (confirm(`"${p.name}" projesini silmek istiyor musun?`)) {
         db.projects.delete(pid).then(() => {
           return refreshAllProjects();
         }).then(() => {
@@ -2482,6 +2539,9 @@ function renderSidebarProjects() {
             if (firstPid) renderProject(firstPid);
             else showDashboard();
           }
+        }).catch((err) => {
+          console.error('Failed to delete project', err);
+          showToast('Proje silinemedi', 'error');
         });
       }
     });
@@ -2496,8 +2556,6 @@ function bindSidebarNavLinks() {
       e.preventDefault();
       if (link.dataset.view === 'dashboard') {
         showDashboard();
-      } else if (link.dataset.view === 'my-tasks') {
-        showDashboard('all');
       }
     });
   });
@@ -2547,43 +2605,48 @@ async function refreshProjectData(projectId) {
 
 // ── Initial Render ────────────────────────────────────
 async function initApp() {
-  // Check if DB has data; if not, seed with defaults
-  const hasData = await db.hasData();
-  if (!hasData) {
-    console.log('[Taskey] First launch — seeding database with default data...');
-    await db.seed(DEFAULT_SEED_DATA);
-  }
+  try {
+    // Check if DB has data; if not, seed with defaults
+    const hasData = await db.hasData();
+    if (!hasData) {
+      console.log('[Taskey] First launch — seeding database with default data...');
+      await db.seed(DEFAULT_SEED_DATA);
+    }
 
-  // Load user profile from settings
-  const settings = await db.settings.getAll();
-  userProfile.firstName = settings['user.firstName'] || '';
-  userProfile.lastName = settings['user.lastName'] || '';
+    // Load user profile from settings
+    const settings = await db.settings.getAll();
+    userProfile.firstName = settings['user.firstName'] || '';
+    userProfile.lastName = settings['user.lastName'] || '';
 
-  // Load command aliases
-  commandAliases = await db.aliases.getAll();
+    // Load command aliases
+    commandAliases = await db.aliases.getAll();
 
-  // Load all data from SQLite into memory cache
-  await refreshAllProjects();
+    // Load all data from SQLite into memory cache
+    await refreshAllProjects();
 
-  // Set initial project
-  const projectIds = Object.keys(projectData);
-  if (projectIds.length > 0) {
-    currentProject = projectIds[0];
-  }
+    // Set initial project
+    const projectIds = Object.keys(projectData);
+    if (projectIds.length > 0) {
+      currentProject = projectIds[0];
+    }
 
-  renderSidebarProjects();
-  bindSidebarNavLinks();
-  initProjectModal();
-  initProjectRename();
-  initDashboard();
-  initSettingsModal();
-  updateSidebarUser();
+    renderSidebarProjects();
+    bindSidebarNavLinks();
+    initProjectModal();
+    initProjectRename();
+    initDashboard();
+    initSettingsModal();
+    updateSidebarUser();
 
-  // If no user profile, show welcome modal
-  if (!userProfile.firstName) {
-    showWelcomeModal();
-  } else {
-    showDashboard();
+    // If no user profile, show welcome modal
+    if (!userProfile.firstName) {
+      showWelcomeModal();
+    } else {
+      showDashboard();
+    }
+  } catch (err) {
+    console.error('[Taskey] Failed to initialize application:', err);
+    showToast('Uygulama başlatılamadı. Lütfen yeniden deneyin.', 'error');
   }
 }
 
