@@ -61,8 +61,22 @@
       "maintainer": "muozez"
     },
     "win": {
-      "target": ["nsis"],
-      "icon": "public/logo256.ico"
+      "target": ["nsis", "portable"],
+      "icon": "public/logo.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "public/logo.ico",
+      "uninstallerIcon": "public/logo.ico",
+      "installerHeaderIcon": "public/logo.ico",
+      "license": "LICENSE",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Taskey"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
     }
   }
 }
