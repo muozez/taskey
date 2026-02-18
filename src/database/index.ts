@@ -31,27 +31,32 @@ export function initDatabase(): Database.Database {
   db.pragma("foreign_keys = ON");
   db.pragma("busy_timeout = 5000");
 
-  // Run schema creation inside a transaction
-  db.exec(CREATE_TABLES);
+  // Run schema creation, version tracking, and migrations inside a single transaction
+  const conn = db;
+  const initTx = conn.transaction(() => {
+    conn.exec(CREATE_TABLES);
 
-  // Track schema version
-  const versionRow = db
-    .prepare("SELECT value FROM schema_meta WHERE key = 'version'")
-    .get() as { value: string } | undefined;
+    // Track schema version
+    const versionRow = conn
+      .prepare("SELECT value FROM schema_meta WHERE key = 'version'")
+      .get() as { value: string } | undefined;
 
-  if (!versionRow) {
-    db.prepare(
-      "INSERT INTO schema_meta (key, value) VALUES ('version', ?)"
-    ).run(String(SCHEMA_VERSION));
-  } else {
-    const currentVersion = parseInt(versionRow.value, 10);
-    if (currentVersion < SCHEMA_VERSION) {
-      runMigrations(db, currentVersion, SCHEMA_VERSION);
-      db.prepare("UPDATE schema_meta SET value = ? WHERE key = 'version'").run(
-        String(SCHEMA_VERSION)
-      );
+    if (!versionRow) {
+      conn.prepare(
+        "INSERT INTO schema_meta (key, value) VALUES ('version', ?)"
+      ).run(String(SCHEMA_VERSION));
+    } else {
+      const currentVersion = parseInt(versionRow.value, 10);
+      if (currentVersion < SCHEMA_VERSION) {
+        runMigrations(conn, currentVersion, SCHEMA_VERSION);
+        conn.prepare(
+          "UPDATE schema_meta SET value = ? WHERE key = 'version'"
+        ).run(String(SCHEMA_VERSION));
+      }
     }
-  }
+  });
+
+  initTx();
 
   console.log(`[Taskey DB] Database initialized (schema v${SCHEMA_VERSION})`);
   return db;
