@@ -1,0 +1,51 @@
+name: Build and Release Electron App
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Rebuild Native Modules for Electron
+        run: npx @electron/rebuild
+
+      - name: Compile TypeScript
+        run: npm run build
+
+      - name: Build Electron App (Linux)
+        if: runner.os == 'Linux'
+        run: npx electron-builder --linux deb rpm
+
+      - name: Build Electron App (Windows)
+        if: runner.os == 'Windows'
+        run: npx electron-builder --win nsis
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.os }}
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.exe

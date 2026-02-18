@@ -2,27 +2,557 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; img-src 'self' data:; script-src 'self'" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Taskey</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background-color: #1e1e2e;
-      color: #cdd6f4;
-    }
-    h1 {
-      font-size: 2rem;
-      font-weight: 300;
-    }
-  </style>
+  <link rel="stylesheet" href="styles/app.css" />
 </head>
 <body>
-  <h1>Taskey</h1>
+<div class="app-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon"><img src="public/logo256.png" alt="Taskey" /></div>
+      <h1>Taskey</h1>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Navigation</div>
+
+      <a class="nav-link active" href="#" data-view="dashboard">
+        <span class="nav-link-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </span>
+        Dashboard
+      </a>
+
+
+      <div class="nav-section-title projects">Projects</div>
+
+      <div id="sidebarProjectList">
+        <!-- Rendered by JS -->
+      </div>
+
+      <button class="sidebar-add-project" id="addProjectBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Project
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name">Alex Rivera</div>
+        </div>
+        <button class="user-settings" title="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ─────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="project-title-bar" id="projectTitleBar">
+          <span class="project-title-icon orange" id="projectTitleIcon">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>
+          </span>
+          <h2 class="project-title-text" id="projectTitleText">Website Redesign</h2>
+          <button class="project-title-edit" id="projectTitleEdit" title="Rename project">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <input class="project-title-input" id="projectTitleInput" type="text" style="display:none;" />
+        </div>
+        <div class="search-wrapper">
+          <span class="search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input class="search-input" type="text" placeholder="Görev, etiket veya proje ara..." id="globalSearchInput" />
+          <div class="search-results" id="searchResults"></div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+      </div>
+    </header>
+
+    <!-- Dashboard View (shown when Dashboard nav is active) -->
+    <div class="dashboard-view" id="dashboardView" style="display:none;">
+      <div class="dash-header">
+        <div class="dash-header-left">
+          <h2 class="dash-title" id="dashGreeting">Dashboard</h2>
+          <div class="dash-date" id="dashDate"></div>
+        </div>
+      </div>
+
+      <div class="dash-stats" id="dashStats">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Project Overview Cards -->
+      <div class="dash-section">
+        <h3 class="dash-section-title">Proje Durumu</h3>
+        <div class="dash-project-overview" id="dashProjectOverview">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="dash-section">
+        <h3 class="dash-section-title">Yaklaşan Görevler</h3>
+        <div class="dash-upcoming" id="dashUpcoming">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <div class="dash-filters">
+        <button class="dash-filter active" data-filter="today">Today</button>
+        <button class="dash-filter" data-filter="this-week">This Week</button>
+        <button class="dash-filter" data-filter="overdue">Overdue</button>
+        <button class="dash-filter" data-filter="all">All Tasks</button>
+      </div>
+
+      <div class="dash-task-list" id="dashTaskList">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Board Area: Backlog Panel + Kanban -->
+    <div class="board-area" id="boardArea">
+
+      <!-- Backlog Reopen Strip (visible when collapsed) -->
+      <div class="backlog-reopen" id="backlogReopen" title="Open Backlog">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        <span class="backlog-reopen-label">Backlog</span>
+      </div>
+
+      <!-- Backlog Panel (per project) -->
+      <div class="backlog-panel" id="backlogPanel">
+        <div class="backlog-header">
+          <h3 class="backlog-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+            Backlog
+            <span class="column-count" id="backlogCount">2</span>
+          </h3>
+          <button class="backlog-toggle" id="backlogToggle" title="Collapse backlog">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+        </div>
+        <button class="backlog-add-btn" id="backlogAddBtn" title="Add task to backlog">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Task
+        </button>
+        <div class="backlog-cards" id="backlogCards">
+          <!-- Website Redesign backlog cards -->
+          <div class="task-card" draggable="true" data-task-id="task-1" data-project="website-redesign">
+            <div class="card-top">
+              <span class="priority-badge high">High</span>
+              <div class="card-avatar orange">J</div>
+            </div>
+            <div class="card-title">Update Brand Guidelines for 2024</div>
+            <div class="card-desc">Ensure all typography and color variables match the new design system.</div>
+          </div>
+          <div class="task-card" draggable="true" data-task-id="task-2" data-project="website-redesign">
+            <div class="card-top">
+              <span class="priority-badge medium">Medium</span>
+              <div class="card-avatar green">S</div>
+            </div>
+            <div class="card-title">API Documentation Review</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kanban Board -->
+      <div class="kanban-board">
+        <div class="kanban-columns" id="kanbanColumns">
+
+          <!-- In Progress -->
+          <div class="kanban-column" data-column="in-progress">
+            <div class="column-header">
+              <h3 class="column-title">In Progress <span class="column-count primary">2</span></h3>
+              <button class="column-more">···</button>
+            </div>
+            <div class="column-cards drop-zone" data-status="in-progress">
+              <div class="task-card in-progress-highlight" draggable="true" data-task-id="task-3" data-project="website-redesign">
+                <div class="card-top">
+                  <span class="priority-badge high">High</span>
+                  <div class="card-avatar blue">M</div>
+                </div>
+                <div class="card-title">Redesign Landing Page Hero</div>
+                <div class="progress-bar-wrapper">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: 65%;"></div>
+                  </div>
+                  <span class="progress-label">65%</span>
+                </div>
+              </div>
+              <div class="task-card" draggable="true" data-task-id="task-4" data-project="website-redesign">
+                <div class="card-top">
+                  <span class="priority-badge low">Low</span>
+                  <div class="card-avatar purple">K</div>
+                </div>
+                <div class="card-title">Fix CSS spacing on Mobile Navigation</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Review -->
+          <div class="kanban-column" data-column="review">
+            <div class="column-header">
+              <h3 class="column-title">Review <span class="column-count">1</span></h3>
+              <button class="column-more">···</button>
+            </div>
+            <div class="column-cards drop-zone" data-status="review">
+              <div class="task-card" draggable="true" data-task-id="task-5" data-project="website-redesign">
+                <div class="card-top">
+                  <span class="priority-badge medium">Medium</span>
+                  <div class="card-avatar blue">A</div>
+                </div>
+                <div class="card-title">Database Schema Update</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Done -->
+          <div class="kanban-column" data-column="done">
+            <div class="column-header">
+              <h3 class="column-title">Done <span class="column-count green">12</span></h3>
+              <button class="column-more">···</button>
+            </div>
+            <div class="column-cards done drop-zone" data-status="done">
+              <div class="task-card" draggable="true" data-task-id="task-6" data-project="website-redesign">
+                <div class="card-top">
+                  <span class="priority-badge done">High</span>
+                  <span class="card-done-check">✓</span>
+                </div>
+                <div class="card-title done-text">User Interview Analysis</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Command Bar -->
+    <div class="command-bar-wrapper">
+      <div class="command-syntax-tooltip" id="commandSyntaxTooltip">
+        <div class="syntax-section">
+          <div class="syntax-section-title">Task Oluştur</div>
+          <div class="syntax-grid">
+            <span class="syntax-key">:t60</span><span class="syntax-desc">Süre (60m, :t2h, :t1d)</span>
+            <span class="syntax-key">$red</span><span class="syntax-desc">Renk</span>
+            <span class="syntax-key">#tag1,tag2</span><span class="syntax-desc">Etiketler</span>
+            <span class="syntax-key">!high</span><span class="syntax-desc">Öncelik (high, medium, low)</span>
+          </div>
+        </div>
+        <div class="syntax-section">
+          <div class="syntax-section-title">Taşıma</div>
+          <div class="syntax-grid">
+            <span class="syntax-key">:sw1</span><span class="syntax-desc">Backlog → ilk kolon</span>
+            <span class="syntax-key">:done2</span><span class="syntax-desc">Aktif kolon → done</span>
+            <span class="syntax-key">:mv inp rev 3</span><span class="syntax-desc">In Progress → Review (3 task)</span>
+            <span class="syntax-key">:mv hot rev 3</span><span class="syntax-desc">Hot-fix → Review (3 task)</span>
+          </div>
+        </div>
+        <div class="syntax-section">
+          <div class="syntax-section-title">Yönetim</div>
+          <div class="syntax-grid">
+            <span class="syntax-key">:del query</span><span class="syntax-desc">Task sil</span>
+            <span class="syntax-key">:col Name</span><span class="syntax-desc">Kolon oluştur</span>
+            <span class="syntax-key">:delcol Name</span><span class="syntax-desc">Kolon sil</span>
+            <span class="syntax-key">:proj Name $blue</span><span class="syntax-desc">Proje oluştur</span>
+            <span class="syntax-key">:clear</span><span class="syntax-desc">Ayarları sıfırla</span>
+          </div>
+        </div>
+      </div>
+      <div class="command-bar">
+        <div class="cmd-badge">CMD</div>
+        <input class="command-input" type="text" placeholder='/help · task adı veya komut yazın...' />
+        <div class="command-bar-hint">
+          <span class="hint-text"><kbd>↑↓</kbd> geçmiş · <kbd>Esc</kbd> kapat</span>
+          <button class="btn-voice" title="Voice input">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Task Detail Modal ──────────────────────────────── -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal-container modal-task-detail">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalTitle">Görev Detayı</h2>
+      <button class="modal-close" id="modalClose" title="Kapat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body modal-body-split">
+      <!-- Left: Main content -->
+      <div class="modal-main">
+        <div class="modal-field">
+          <input class="modal-input modal-title-input" type="text" id="modalTaskTitle" placeholder="Görev başlığı..." />
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Açıklama</label>
+          <textarea class="modal-textarea" id="modalTaskDesc" rows="3" placeholder="Detaylı bir açıklama ekleyin..."></textarea>
+        </div>
+
+        <div class="modal-field">
+          <label class="modal-label">Yapılacaklar</label>
+          <div class="checklist-container" id="checklistContainer"></div>
+          <div class="checklist-add">
+            <input class="modal-input checklist-input" type="text" id="checklistNewItem" placeholder="Yeni madde ekle..." />
+            <button class="checklist-add-btn" id="checklistAddBtn" title="Ekle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-field">
+          <label class="modal-label">Etiketler <span class="modal-label-hint">(virgülle ayırın)</span></label>
+          <input class="modal-input" type="text" id="modalTaskTags" placeholder="design, urgent, frontend..." />
+        </div>
+
+        <div class="modal-meta" id="modalMeta"></div>
+      </div>
+
+      <!-- Right: Properties sidebar -->
+      <div class="modal-sidebar">
+        <div class="modal-sidebar-section">
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Durum</label>
+            <select class="modal-select" id="modalTaskStatus">
+              <option value="backlog">Backlog</option>
+            </select>
+          </div>
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Öncelik</label>
+            <select class="modal-select" id="modalTaskPriority">
+              <option value="low">Düşük</option>
+              <option value="medium">Orta</option>
+              <option value="high">Yüksek</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-sidebar-section">
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Tarih</label>
+            <input class="modal-input" type="date" id="modalTaskDueDate" />
+          </div>
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Saat</label>
+            <input class="modal-input" type="time" id="modalTaskDueTime" />
+          </div>
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Süre</label>
+            <select class="modal-select" id="modalTaskDuration">
+              <option value="">Yok</option>
+              <option value="15m">15 dk</option>
+              <option value="30m">30 dk</option>
+              <option value="1h">1 saat</option>
+              <option value="2h">2 saat</option>
+              <option value="4h">4 saat</option>
+              <option value="1d">1 gün</option>
+              <option value="2d">2 gün</option>
+              <option value="1w">1 hafta</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-sidebar-section">
+          <div class="modal-sidebar-row">
+            <label class="modal-label">İlerleme</label>
+            <div class="modal-progress-group">
+              <input class="modal-progress-range" type="range" id="modalTaskProgressRange" min="0" max="100" value="0" />
+              <input class="modal-input modal-input-sm" type="number" id="modalTaskProgress" min="0" max="100" placeholder="0" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-sidebar-section">
+          <div class="modal-sidebar-row">
+            <label class="modal-label">Atanan</label>
+            <div class="modal-avatar-group">
+              <input class="modal-input modal-input-sm" type="text" id="modalTaskAvatar" maxlength="2" placeholder="A" />
+              <select class="modal-select modal-select-color" id="modalTaskAvatarColor">
+                <option value="blue">Mavi</option>
+                <option value="green">Yeşil</option>
+                <option value="orange">Turuncu</option>
+                <option value="purple">Mor</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn-delete" id="modalDelete">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Sil
+      </button>
+      <div class="modal-footer-right">
+        <button class="modal-btn-cancel" id="modalCancel">İptal</button>
+        <button class="modal-btn-save" id="modalSave">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Project Modal ──────────────────────────────────── -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal-container modal-project">
+    <div class="modal-header">
+      <h2 class="modal-title" id="projectModalTitle">New Project</h2>
+      <button class="modal-close" id="projectModalClose" title="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">Template</label>
+        <div class="template-picker" id="templatePicker">
+          <button class="template-card active" data-template="basic-kanban" type="button">
+            <div class="template-card-icon">📋</div>
+            <div class="template-card-info">
+              <div class="template-card-name">Basic Kanban</div>
+              <div class="template-card-desc">Backlog → In Progress → Done</div>
+            </div>
+          </button>
+          <button class="template-card" data-template="daily-checks" type="button">
+            <div class="template-card-icon">✅</div>
+            <div class="template-card-info">
+              <div class="template-card-name">Daily Checks</div>
+              <div class="template-card-desc">Backlog → Today → In Progress → Completed</div>
+            </div>
+          </button>
+          <button class="template-card" data-template="software-project" type="button">
+            <div class="template-card-icon">💻</div>
+            <div class="template-card-info">
+              <div class="template-card-name">Software Project</div>
+              <div class="template-card-desc">Backlog → In Progress → Review → Testing → Hot-fix → Done</div>
+            </div>
+          </button>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Project Name</label>
+        <input class="modal-input" type="text" id="projectModalName" placeholder="e.g. Mobile App" />
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Color</label>
+        <div class="color-picker" id="colorPicker">
+          <button class="color-swatch orange active" data-color="orange" title="Orange" type="button"></button>
+          <button class="color-swatch blue" data-color="blue" title="Blue" type="button"></button>
+          <button class="color-swatch green" data-color="green" title="Green" type="button"></button>
+          <button class="color-swatch purple" data-color="purple" title="Purple" type="button"></button>
+          <label class="color-swatch-custom" title="Custom color">
+            <input type="color" class="color-custom-input" id="colorCustomInput" value="#6366f1" />
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div></div>
+      <div class="modal-footer-right">
+        <button class="modal-btn-cancel" id="projectModalCancel">Cancel</button>
+        <button class="modal-btn-save" id="projectModalSave">Create</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Welcome Modal (first launch) ───────────────────── -->
+<div class="modal-overlay" id="welcomeModal">
+  <div class="modal-container modal-welcome">
+    <div class="welcome-header">
+      <div class="welcome-logo">T</div>
+      <h2 class="welcome-title">Taskey'e Hoş Geldiniz!</h2>
+      <p class="welcome-subtitle">Başlamadan önce sizi tanıyalım.</p>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">Ad</label>
+        <input class="modal-input" type="text" id="welcomeFirstName" placeholder="Adınız..." autofocus />
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Soyad</label>
+        <input class="modal-input" type="text" id="welcomeLastName" placeholder="Soyadınız..." />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div></div>
+      <div class="modal-footer-right">
+        <button class="modal-btn-save" id="welcomeSave">Başlayalım</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Settings Modal ─────────────────────────────────── -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-container modal-settings">
+    <div class="modal-header">
+      <h2 class="modal-title">Ayarlar</h2>
+      <button class="modal-close" id="settingsModalClose" title="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Profile Section -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">Profil</h3>
+        <div class="modal-row">
+          <div class="modal-field">
+            <label class="modal-label">Ad</label>
+            <input class="modal-input" type="text" id="settingsFirstName" placeholder="Adınız..." />
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Soyad</label>
+            <input class="modal-input" type="text" id="settingsLastName" placeholder="Soyadınız..." />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-separator"></div>
+
+      <!-- Command Aliases Section -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">Komut Özelleştirme</h3>
+        <p class="settings-hint">Varsayılan komutlara özel takma adlar verin. Örneğin <kbd>:mv</kbd> yerine <kbd>:taşı</kbd> kullanabilirsiniz.</p>
+        <div class="alias-list" id="aliasListContainer">
+          <!-- Rendered by JS -->
+        </div>
+        <div class="alias-add-row">
+          <input class="modal-input alias-input" type="text" id="newAliasFrom" placeholder="Takma ad (ör: :taşı)" />
+          <span class="alias-arrow">→</span>
+          <input class="modal-input alias-input" type="text" id="newAliasTo" placeholder="Orijinal komut (ör: :mv)" />
+          <button class="alias-add-btn" id="addAliasBtn" title="Ekle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div></div>
+      <div class="modal-footer-right">
+        <button class="modal-btn-cancel" id="settingsModalCancel">İptal</button>
+        <button class="modal-btn-save" id="settingsModalSave">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="renderer/app.js"></script>
 </body>
 </html>
