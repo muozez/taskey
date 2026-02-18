@@ -33,24 +33,36 @@
     "better-sqlite3": "^12.6.2"
   },
   "build": {
-    "appId": "com.muozez.taskey",
+    "appId": "com.taskey.app",
     "productName": "taskey",
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "muozez",
+        "repo": "taskey",
+        "releaseType": "release"
+      }
+    ],
     "files": [
       "dist/**/*",
       "renderer/**/*",
-      "public/**/*",
       "styles/**/*",
       "index.html",
-      "package.json"
+      "package.json",
+      "public/**/*"
     ],
     "linux": {
-      "target": ["deb", "rpm"]
+      "target": ["deb", "rpm"],
+      "category": "Utility",
+      "icon": "public/logo256.png",
+      "maintainer": "muozez"
     },
     "win": {
-      "target": ["nsis"]
+      "target": ["nsis"],
+      "icon": "public/logo32.ico"
     }
   }
 }
