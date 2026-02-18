@@ -163,6 +163,8 @@ const dashProjectOverview = document.getElementById('dashProjectOverview');
 const dashUpcoming = document.getElementById('dashUpcoming');
 const sidebarProjectList = document.getElementById('sidebarProjectList');
 const addProjectBtn = document.getElementById('addProjectBtn');
+const globalSearchInput = document.getElementById('globalSearchInput');
+const searchResults = document.getElementById('searchResults');
 
 // Project modal refs
 const projectModal = document.getElementById('projectModal');
@@ -252,6 +254,143 @@ function getChecklistProgress(checklist) {
   if (!checklist || checklist.length === 0) return null;
   const done = checklist.filter(c => c.done).length;
   return { done, total: checklist.length };
+}
+
+// ── Global Search ─────────────────────────────────────
+
+let searchActiveIndex = -1;
+
+function getAllTasksFromMemory() {
+  const results = [];
+  for (const [pid, project] of Object.entries(projectData)) {
+    const statuses = getProjectStatuses(project);
+    for (const status of statuses) {
+      const tasks = project[status] || [];
+      for (const task of tasks) {
+        const col = project.columns.find(c => c.id === status);
+        const statusLabel = status === 'backlog' ? 'Backlog' : (col ? col.label : status);
+        results.push({ ...task, projectId: pid, projectName: project.name, status, statusLabel });
+      }
+    }
+  }
+  return results;
+}
+
+function highlightMatch(text, query) {
+  if (!query) return text;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
+}
+
+function performSearch(query) {
+  if (!query || query.length < 2) {
+    searchResults.classList.remove('visible');
+    return;
+  }
+
+  const q = query.toLowerCase();
+  const allTasks = getAllTasksFromMemory();
+
+  const matches = allTasks.filter(t =>
+    t.title.toLowerCase().includes(q) ||
+    (t.desc && t.desc.toLowerCase().includes(q)) ||
+    (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
+  );
+
+  if (matches.length === 0) {
+    searchResults.innerHTML = '<div class="search-results-empty">Sonuç bulunamadı</div>';
+    searchResults.classList.add('visible');
+    searchActiveIndex = -1;
+    return;
+  }
+
+  // Limit to 12 results
+  const limited = matches.slice(0, 12);
+
+  searchResults.innerHTML = limited.map((task, i) => `
+    <div class="search-result-item" data-task-id="${task.id}" data-project-id="${task.projectId}" data-index="${i}">
+      <div class="search-result-priority ${task.priority}"></div>
+      <div class="search-result-info">
+        <div class="search-result-title">${highlightMatch(task.title, query)}</div>
+        <div class="search-result-meta">
+          <span class="search-result-project">${task.projectName}</span>
+          <span>·</span>
+          <span class="search-result-status">${task.statusLabel}</span>
+          ${task.tags && task.tags.length > 0 ? `<span>· ${task.tags.join(', ')}</span>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  searchResults.classList.add('visible');
+  searchActiveIndex = -1;
+
+  // Click handlers
+  searchResults.querySelectorAll('.search-result-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const taskId = item.dataset.taskId;
+      const projectId = item.dataset.projectId;
+      // Navigate to project and open task
+      globalSearchInput.value = '';
+      searchResults.classList.remove('visible');
+      renderProject(projectId);
+      setTimeout(() => openTaskModal(taskId), 300);
+    });
+  });
+}
+
+function updateSearchActiveItem() {
+  const items = searchResults.querySelectorAll('.search-result-item');
+  items.forEach((item, i) => {
+    item.classList.toggle('active', i === searchActiveIndex);
+  });
+  // Scroll active into view
+  const active = items[searchActiveIndex];
+  if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+if (globalSearchInput) {
+  let searchDebounce = null;
+
+  globalSearchInput.addEventListener('input', () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      performSearch(globalSearchInput.value.trim());
+    }, 200);
+  });
+
+  globalSearchInput.addEventListener('keydown', (e) => {
+    const items = searchResults.querySelectorAll('.search-result-item');
+    if (!searchResults.classList.contains('visible') || items.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      searchActiveIndex = Math.min(searchActiveIndex + 1, items.length - 1);
+      updateSearchActiveItem();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      searchActiveIndex = Math.max(searchActiveIndex - 1, 0);
+      updateSearchActiveItem();
+    } else if (e.key === 'Enter' && searchActiveIndex >= 0) {
+      e.preventDefault();
+      items[searchActiveIndex].click();
+    } else if (e.key === 'Escape') {
+      globalSearchInput.value = '';
+      searchResults.classList.remove('visible');
+      globalSearchInput.blur();
+    }
+  });
+
+  globalSearchInput.addEventListener('blur', () => {
+    // Delay to allow click on results
+    setTimeout(() => searchResults.classList.remove('visible'), 200);
+  });
+
+  globalSearchInput.addEventListener('focus', () => {
+    if (globalSearchInput.value.trim().length >= 2) {
+      performSearch(globalSearchInput.value.trim());
+    }
+  });
 }
 
 // ── Card Meta Builder ─────────────────────────────────

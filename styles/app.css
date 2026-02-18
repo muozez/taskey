@@ -76,16 +76,19 @@ body {
 }
 
 .sidebar-logo-icon {
-  background: var(--primary);
-  color: #fff;
   width: 32px;
   height: 32px;
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
+  overflow: hidden;
+}
+
+.sidebar-logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .sidebar-logo h1 {
@@ -289,6 +292,106 @@ body {
 
 .search-input::placeholder {
   color: var(--text-400);
+}
+
+/* Search Results Dropdown */
+.search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2xl);
+  max-height: 360px;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
+}
+
+.search-results.visible {
+  display: block;
+}
+
+.search-results-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-400);
+  font-size: 13px;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--slate-100);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover,
+.search-result-item.active {
+  background: var(--slate-100);
+}
+
+.search-result-priority {
+  width: 4px;
+  height: 28px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.search-result-priority.high { background: #ef4444; }
+.search-result-priority.medium { background: #f59e0b; }
+.search-result-priority.low { background: #22c55e; }
+
+.search-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-result-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-title mark {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.search-result-meta {
+  font-size: 11px;
+  color: var(--text-400);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.search-result-project {
+  font-weight: 600;
+  color: var(--text-600);
+}
+
+.search-result-status {
+  background: var(--slate-200);
+  padding: 1px 6px;
+  border-radius: var(--radius);
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .topbar-actions {
@@ -746,9 +849,8 @@ body {
 .progress-fill {
   height: 100%;
   background: var(--primary);
-  border-radius: var(--radius-full);
+  border-radius: 0;
   transition: width 0.3s;
-  min-width: 4px;
 }
 
 .progress-label {
