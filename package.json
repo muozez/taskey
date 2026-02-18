@@ -12,7 +12,10 @@
     "url": "git+https://github.com/muozez/taskey.git"
   },
   "keywords": [],
-  "author": "",
+  "author": {
+    "name": "muozez",
+    "email": "muozez@users.noreply.github.com"
+  },
   "license": "ISC",
   "type": "commonjs",
   "bugs": {

@@ -263,7 +263,7 @@ export function updateTask(
     taskId
   );
 
-  // Log field-level changes
+  // Log field-level changes (exclude status — handled as "move" below)
   logFieldChanges(
     "task",
     taskId,
@@ -272,11 +272,11 @@ export function updateTask(
     newObj,
     [
       "title", "description", "priority", "avatar", "avatar_color",
-      "due_date", "due_time", "duration", "progress", "tags", "checklist", "status",
+      "due_date", "due_time", "duration", "progress", "tags", "checklist",
     ]
   );
 
-  // Special "move" action if status changed
+  // Special "move" action if status changed (single entry, no duplicate)
   if (existing.status !== newStatus) {
     logChange({
       entity_type: "task",

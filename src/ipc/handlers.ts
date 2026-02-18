@@ -4,6 +4,51 @@ import * as taskRepo from "../database/repositories/tasks";
 import * as changelogRepo from "../database/repositories/changelog";
 import * as settingsRepo from "../database/repositories/settings";
 import { getDatabase } from "../database/index";
+import type { TaskData } from "../database/repositories/tasks";
+
+/* ── DTO types for IPC payloads ────────────────────────── */
+
+/** Payload for creating a task via IPC */
+interface CreateTaskPayload {
+  id: string;
+  title: string;
+  desc?: string;
+  priority?: string;
+  avatar?: string;
+  avatarColor?: string;
+  dueDate?: string;
+  dueTime?: string;
+  duration?: string;
+  progress?: number;
+  tags?: string[];
+  checklist?: { text: string; done: boolean }[];
+  createdAt?: string;
+}
+
+/** Payload for updating a task via IPC */
+interface UpdateTaskPayload {
+  title?: string;
+  desc?: string;
+  priority?: string;
+  avatar?: string;
+  avatarColor?: string;
+  dueDate?: string;
+  dueTime?: string;
+  duration?: string;
+  progress?: number;
+  tags?: string[];
+  checklist?: { text: string; done: boolean }[];
+  status?: string;
+}
+
+/** Payload for seeding project data via IPC */
+interface SeedProjectPayload {
+  name: string;
+  color: string;
+  columns: { id: string; label: string; isDone?: boolean }[];
+  backlog: CreateTaskPayload[];
+  [key: string]: unknown;
+}
 
 /**
  * Registers all IPC handlers for database operations.
@@ -102,12 +147,12 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(
     "db:tasks:create",
-    (_event, projectId: string, status: string, data: any) => {
+    (_event, projectId: string, status: string, data: CreateTaskPayload) => {
       return taskRepo.createTask(projectId, status, data);
     }
   );
 
-  ipcMain.handle("db:tasks:update", (_event, taskId: string, updates: any) => {
+  ipcMain.handle("db:tasks:update", (_event, taskId: string, updates: UpdateTaskPayload) => {
     return taskRepo.updateTask(taskId, updates);
   });
 
@@ -159,16 +204,7 @@ export function registerIpcHandlers(): void {
     "db:seed",
     (
       _event,
-      projectDataMap: Record<
-        string,
-        {
-          name: string;
-          color: string;
-          columns: { id: string; label: string; isDone?: boolean }[];
-          backlog: any[];
-          [key: string]: any;
-        }
-      >
+      projectDataMap: Record<string, SeedProjectPayload>
     ) => {
       const db = getDatabase();
 
@@ -180,7 +216,7 @@ export function registerIpcHandlers(): void {
           // Create tasks for each status
           const statuses = ["backlog", ...project.columns.map((c) => c.id)];
           for (const status of statuses) {
-            const tasks = project[status] as any[];
+            const tasks = project[status] as CreateTaskPayload[];
             if (!tasks || !Array.isArray(tasks)) continue;
             for (const task of tasks) {
               taskRepo.createTask(pid, status, {
