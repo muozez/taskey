@@ -18,71 +18,8 @@ let userProfile = {
 // ── Command Aliases (loaded from DB) ──────────────────
 let commandAliases = {}; // { ':taşı': ':mv', ... }
 
-// ── Default seed data (used only on first launch) ──────
-const DEFAULT_SEED_DATA = {
-  'website-redesign': {
-    name: 'Website Redesign',
-    color: 'orange',
-    columns: [
-      { id: 'in-progress', label: 'In Progress' },
-      { id: 'review', label: 'Review' },
-      { id: 'done', label: 'Done', isDone: true }
-    ],
-    backlog: [
-      { id: 'wr-1', title: 'Update Brand Guidelines for 2024', desc: 'Ensure all typography and color variables match the new design system.', priority: 'high', avatar: 'J', avatarColor: 'orange', dueDate: '2026-02-28', dueTime: '17:00', duration: '4h', progress: 0, tags: ['design', 'branding'], checklist: [{text: 'Review typography', done: true}, {text: 'Update color tokens', done: false}], createdAt: '2026-02-10T09:00:00' },
-      { id: 'wr-2', title: 'API Documentation Review', desc: '', priority: 'medium', avatar: 'S', avatarColor: 'green', dueDate: '2026-03-05', dueTime: '', duration: '2h', progress: 0, tags: ['docs'], checklist: [], createdAt: '2026-02-12T14:30:00' },
-    ],
-    'in-progress': [
-      { id: 'wr-3', title: 'Redesign Landing Page Hero', desc: '', priority: 'high', avatar: 'M', avatarColor: 'blue', dueDate: '2026-02-20', dueTime: '12:00', duration: '1d', progress: 65, tags: ['design', 'frontend'], checklist: [{text: 'Wireframe', done: true}, {text: 'Hi-fi mockup', done: true}, {text: 'Implementation', done: false}], createdAt: '2026-02-05T10:00:00' },
-      { id: 'wr-4', title: 'Fix CSS spacing on Mobile Navigation', desc: '', priority: 'low', avatar: 'K', avatarColor: 'purple', dueDate: '', dueTime: '', duration: '30m', progress: 0, tags: ['bug', 'mobile'], checklist: [], createdAt: '2026-02-14T16:00:00' },
-    ],
-    'review': [
-      { id: 'wr-5', title: 'Database Schema Update', desc: '', priority: 'medium', avatar: 'A', avatarColor: 'blue', dueDate: '2026-02-22', dueTime: '', duration: '2h', progress: 0, tags: ['backend'], checklist: [], createdAt: '2026-02-08T11:00:00' },
-    ],
-    'done': [
-      { id: 'wr-6', title: 'User Interview Analysis', desc: '', priority: 'high', avatar: '', avatarColor: '', dueDate: '', dueTime: '', duration: '', progress: 100, tags: ['research'], checklist: [], createdAt: '2026-01-20T09:00:00' },
-    ],
-  },
-  'q4-strategy': {
-    name: 'Q4 Strategy',
-    color: 'blue',
-    columns: [
-      { id: 'in-progress', label: 'In Progress' },
-      { id: 'review', label: 'Review' },
-      { id: 'done', label: 'Done', isDone: true }
-    ],
-    backlog: [
-      { id: 'q4-1', title: 'Competitive Analysis Report', desc: 'Analyze top 5 competitors and market positioning.', priority: 'high', avatar: 'A', avatarColor: 'blue', dueDate: '2026-03-01', dueTime: '', duration: '1d', progress: 0, tags: ['research'], checklist: [], createdAt: '2026-02-11T10:00:00' },
-      { id: 'q4-2', title: 'Budget Allocation Draft', desc: '', priority: 'medium', avatar: 'M', avatarColor: 'green', dueDate: '2026-03-10', dueTime: '', duration: '4h', progress: 0, tags: ['finance'], checklist: [], createdAt: '2026-02-13T09:00:00' },
-    ],
-    'in-progress': [
-      { id: 'q4-3', title: 'Revenue Forecast Model', desc: '', priority: 'high', avatar: 'S', avatarColor: 'orange', dueDate: '2026-02-25', dueTime: '18:00', duration: '2d', progress: 40, tags: ['finance', 'data'], checklist: [], createdAt: '2026-02-06T08:00:00' },
-    ],
-    'review': [],
-    'done': [
-      { id: 'q4-4', title: 'Stakeholder Meeting Notes', desc: '', priority: 'medium', avatar: '', avatarColor: '', dueDate: '', dueTime: '', duration: '', progress: 100, tags: [], checklist: [], createdAt: '2026-01-25T14:00:00' },
-    ],
-  },
-  'brand-guidelines': {
-    name: 'Brand Guidelines',
-    color: 'purple',
-    columns: [
-      { id: 'in-progress', label: 'In Progress' },
-      { id: 'review', label: 'Review' },
-      { id: 'done', label: 'Done', isDone: true }
-    ],
-    backlog: [
-      { id: 'bg-1', title: 'Color Palette Refresh', desc: 'Update primary and secondary color palettes.', priority: 'medium', avatar: 'J', avatarColor: 'purple', dueDate: '2026-03-15', dueTime: '', duration: '2h', progress: 0, tags: ['design'], checklist: [], createdAt: '2026-02-14T10:00:00' },
-    ],
-    'in-progress': [
-      { id: 'bg-2', title: 'Typography System Update', desc: '', priority: 'high', avatar: 'K', avatarColor: 'orange', dueDate: '2026-02-19', dueTime: '15:00', duration: '4h', progress: 30, tags: ['design', 'type'], checklist: [], createdAt: '2026-02-07T09:00:00' },
-    ],
-    'review': [
-      { id: 'bg-3', title: 'Logo Usage Guidelines', desc: '', priority: 'low', avatar: 'A', avatarColor: 'blue', dueDate: '', dueTime: '', duration: '1h', progress: 0, tags: ['branding'], checklist: [], createdAt: '2026-02-10T11:00:00' },
-    ],
-    'done': [],
-  },
-};
+// ── Default seed data removed — clean start ───────────
+// Onboarding guide teaches users how to create projects.
 
 // ── Project Templates ─────────────────────────────────
 const projectTemplates = {
@@ -1856,7 +1793,7 @@ function showWelcomeModal() {
     updateSidebarUser();
     modal.classList.remove('open');
     showToast(`Hoş geldin, ${firstName}!`, 'success');
-    showDashboard();
+    showOnboarding();
   });
 
   // Enter on inputs
@@ -1866,6 +1803,82 @@ function showWelcomeModal() {
   firstNameInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); lastNameInput.focus(); }
   });
+}
+
+// ── Onboarding Modal ──────────────────────────────────
+
+function showOnboarding() {
+  const modal = document.getElementById('onboardingModal');
+  modal.classList.add('open');
+
+  let currentStep = 1;
+  const totalSteps = 4;
+  const nextBtn = document.getElementById('onboardingNext');
+  const prevBtn = document.getElementById('onboardingPrev');
+  const counterEl = document.getElementById('onboardingCurrent');
+
+  function updateStep() {
+    // Update visible step
+    modal.querySelectorAll('.onboarding-step').forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.step) === currentStep);
+    });
+    // Update dots
+    modal.querySelectorAll('.onboarding-dot').forEach(d => {
+      d.classList.toggle('active', parseInt(d.dataset.dot) === currentStep);
+    });
+    // Update counter
+    counterEl.textContent = currentStep;
+    // Update buttons
+    prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+    nextBtn.textContent = currentStep === totalSteps ? 'Başlayalım' : 'İleri';
+  }
+
+  nextBtn.addEventListener('click', () => {
+    if (currentStep < totalSteps) {
+      currentStep++;
+      updateStep();
+    } else {
+      modal.classList.remove('open');
+      showDashboard();
+    }
+  });
+
+  prevBtn.addEventListener('click', () => {
+    if (currentStep > 1) {
+      currentStep--;
+      updateStep();
+    }
+  });
+
+  // Dot navigation
+  modal.querySelectorAll('.onboarding-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      currentStep = parseInt(dot.dataset.dot);
+      updateStep();
+    });
+  });
+
+  // Keyboard navigation
+  const keyHandler = (e) => {
+    if (!modal.classList.contains('open')) {
+      document.removeEventListener('keydown', keyHandler);
+      return;
+    }
+    if (e.key === 'ArrowRight' || e.key === 'Enter') {
+      e.preventDefault();
+      nextBtn.click();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      prevBtn.click();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      modal.classList.remove('open');
+      showDashboard();
+    }
+  };
+  document.addEventListener('keydown', keyHandler);
+
+  updateStep();
 }
 
 // ── Settings Modal ────────────────────────────────────
@@ -3051,12 +3064,8 @@ async function refreshProjectData(projectId) {
 // ── Initial Render ────────────────────────────────────
 async function initApp() {
   try {
-    // Check if DB has data; if not, seed with defaults
+    // First launch detection (no seeding — onboarding will guide user)
     const hasData = await db.hasData();
-    if (!hasData) {
-      console.log('[Taskey] First launch — seeding database with default data...');
-      await db.seed(DEFAULT_SEED_DATA);
-    }
 
     // Load user profile from settings
     const settings = await db.settings.getAll();
@@ -3084,9 +3093,11 @@ async function initApp() {
     initSyncModal();
     updateSidebarUser();
 
-    // If no user profile, show welcome modal
+    // If no user profile, show welcome + onboarding modal
     if (!userProfile.firstName) {
       showWelcomeModal();
+    } else if (!hasData) {
+      showOnboarding();
     } else {
       showDashboard();
     }

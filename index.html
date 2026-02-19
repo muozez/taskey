@@ -502,7 +502,91 @@
     <div class="modal-footer">
       <div></div>
       <div class="modal-footer-right">
-        <button class="modal-btn-save" id="welcomeSave">Başlayalım</button>
+        <button class="modal-btn-save" id="welcomeSave">Devam</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Onboarding Modal ───────────────────────────────── -->
+<div class="modal-overlay" id="onboardingModal">
+  <div class="modal-container modal-onboarding">
+    <div class="onboarding-content">
+
+      <!-- Step 1: Proje Oluşturma -->
+      <div class="onboarding-step active" data-step="1">
+        <div class="onboarding-step-icon">📁</div>
+        <h2 class="onboarding-step-title">Proje Oluşturun</h2>
+        <p class="onboarding-step-desc">Sol paneldeki <strong>"New Project"</strong> butonuna tıklayarak yeni bir proje oluşturun. Şablon seçin, isim verin ve bir renk belirleyin.</p>
+        <div class="onboarding-visual">
+          <div class="onboarding-mock-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Project
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Görev Ekleme -->
+      <div class="onboarding-step" data-step="2">
+        <div class="onboarding-step-icon">✏️</div>
+        <h2 class="onboarding-step-title">Görev Ekleyin</h2>
+        <p class="onboarding-step-desc">Projenize girdikten sonra <strong>Backlog</strong> alanının altındaki <strong>"+ Add Task"</strong> butonuna tıklayarak veya komut satırına yazarak görev ekleyin.</p>
+        <div class="onboarding-visual">
+          <div class="onboarding-mock-cmd">
+            <span class="onboarding-cmd-prompt">▸</span>
+            <span class="onboarding-cmd-text">API dokümantasyonunu güncelle</span>
+          </div>
+          <div class="onboarding-mock-hint">Enter'a basarak görev oluşturun</div>
+        </div>
+      </div>
+
+      <!-- Step 3: Komut Satırı -->
+      <div class="onboarding-step" data-step="3">
+        <div class="onboarding-step-icon">⌨️</div>
+        <h2 class="onboarding-step-title">Komutları Kullanın</h2>
+        <p class="onboarding-step-desc">Komut satırına <strong>:</strong> ile başlayan komutlar yazarak hızlıca işlem yapın. Kullanılabilir komutlar:</p>
+        <div class="onboarding-visual">
+          <div class="onboarding-cmd-list">
+            <div class="onboarding-cmd-item"><code>:mv</code> <span>Görevi taşı</span></div>
+            <div class="onboarding-cmd-item"><code>:done</code> <span>Görevi tamamla</span></div>
+            <div class="onboarding-cmd-item"><code>:del</code> <span>Görevi sil</span></div>
+            <div class="onboarding-cmd-item"><code>:proj</code> <span>Yeni proje oluştur</span></div>
+            <div class="onboarding-cmd-item"><code>:col</code> <span>Kolon ekle</span></div>
+            <div class="onboarding-cmd-item"><code>/help</code> <span>Tüm komutları gör</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Remote Sync -->
+      <div class="onboarding-step" data-step="4">
+        <div class="onboarding-step-icon">🔄</div>
+        <h2 class="onboarding-step-title">Takımınızla Senkronize Edin</h2>
+        <p class="onboarding-step-desc">Sol panelin altındaki <strong>"Remote Sync"</strong> butonuna tıklayarak bir Taskey sunucusuna bağlanabilirsiniz. Tüm verileriniz önce cihazınızda saklanır — çevrimdışı da çalışabilirsiniz.</p>
+        <div class="onboarding-visual">
+          <div class="onboarding-sync-mock">
+            <div class="onboarding-sync-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </div>
+            <span>Remote Sync → Sunucu + Anahtar ile bağlan</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Step Indicators -->
+    <div class="onboarding-indicators">
+      <button class="onboarding-dot active" data-dot="1"></button>
+      <button class="onboarding-dot" data-dot="2"></button>
+      <button class="onboarding-dot" data-dot="3"></button>
+      <button class="onboarding-dot" data-dot="4"></button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="modal-btn-cancel onboarding-prev" id="onboardingPrev" style="visibility: hidden;">Geri</button>
+      <div class="onboarding-step-counter"><span id="onboardingCurrent">1</span> / 4</div>
+      <div class="modal-footer-right">
+        <button class="modal-btn-save" id="onboardingNext">İleri</button>
       </div>
     </div>
   </div>
