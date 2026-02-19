@@ -41,6 +41,15 @@
     </nav>
 
     <div class="sidebar-footer">
+      <!-- Sync Status Indicator -->
+      <button class="sidebar-sync-btn" id="sidebarSyncBtn" title="Remote Sync">
+        <span class="sidebar-sync-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </span>
+        <span class="sidebar-sync-label" id="sidebarSyncLabel">Remote Sync</span>
+        <span class="sidebar-sync-status" id="sidebarSyncStatus"></span>
+      </button>
+
       <div class="sidebar-user">
         <div class="user-avatar">A</div>
         <div class="user-info">
@@ -548,6 +557,127 @@
       <div class="modal-footer-right">
         <button class="modal-btn-cancel" id="settingsModalCancel">İptal</button>
         <button class="modal-btn-save" id="settingsModalSave">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Remote Sync Modal ───────────────────────────────── -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal-container modal-sync">
+    <div class="modal-header">
+      <h2 class="modal-title">Remote Sync</h2>
+      <button class="modal-close" id="syncModalClose" title="Close">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Status Banner -->
+      <div class="sync-status-banner" id="syncStatusBanner">
+        <div class="sync-status-dot" id="syncStatusDot"></div>
+        <div class="sync-status-info">
+          <div class="sync-status-text" id="syncStatusText">Bağlı değil</div>
+          <div class="sync-status-detail" id="syncStatusDetail"></div>
+        </div>
+      </div>
+
+      <!-- Connected View (shown when connected) -->
+      <div class="sync-connected-view" id="syncConnectedView" style="display:none;">
+        <div class="settings-section">
+          <h3 class="settings-section-title">Bağlantı Bilgileri</h3>
+          <div class="sync-info-grid">
+            <div class="sync-info-item">
+              <span class="sync-info-label">Workspace</span>
+              <span class="sync-info-value" id="syncInfoWorkspace">—</span>
+            </div>
+            <div class="sync-info-item">
+              <span class="sync-info-label">Sunucu</span>
+              <span class="sync-info-value" id="syncInfoServer">—</span>
+            </div>
+            <div class="sync-info-item">
+              <span class="sync-info-label">Versiyon</span>
+              <span class="sync-info-value" id="syncInfoVersion">—</span>
+            </div>
+            <div class="sync-info-item">
+              <span class="sync-info-label">Strateji</span>
+              <span class="sync-info-value" id="syncInfoStrategy">—</span>
+            </div>
+            <div class="sync-info-item">
+              <span class="sync-info-label">Bekleyen Push</span>
+              <span class="sync-info-value" id="syncInfoPending">0</span>
+            </div>
+            <div class="sync-info-item">
+              <span class="sync-info-label">Conflict</span>
+              <span class="sync-info-value" id="syncInfoConflicts">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sync-actions-row">
+          <button class="sync-action-btn sync-btn-push" id="syncPushBtn" title="Değişiklikleri gönder">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            Push
+          </button>
+          <button class="sync-action-btn sync-btn-pull" id="syncPullBtn" title="Değişiklikleri çek">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+            Pull
+          </button>
+          <button class="sync-action-btn sync-btn-fullsync" id="syncFullSyncBtn" title="Tam senkronizasyon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Full Sync
+          </button>
+        </div>
+
+        <!-- Conflicts Section -->
+        <div class="sync-conflicts-section" id="syncConflictsSection" style="display:none;">
+          <div class="modal-separator"></div>
+          <div class="settings-section">
+            <h3 class="settings-section-title">Çakışmalar</h3>
+            <div class="sync-conflict-list" id="syncConflictList">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Join View (shown when not connected) -->
+      <div class="sync-join-view" id="syncJoinView">
+        <div class="settings-section">
+          <h3 class="settings-section-title">Workspace'e Katıl</h3>
+          <p class="settings-hint">Uzak bir sunucudaki workspace'e bağlanmak için sunucu adresi ve katılım anahtarını girin.</p>
+
+          <div class="modal-field">
+            <label class="modal-label">Sunucu Adresi</label>
+            <input class="modal-input" type="text" id="syncServerUrl" placeholder="https://taskey-server.example.com" />
+          </div>
+
+          <div class="modal-field">
+            <label class="modal-label">Katılım Anahtarı</label>
+            <div class="sync-joinkey-row">
+              <input class="modal-input sync-joinkey-input" type="text" id="syncJoinKey" placeholder="ABCD-EF23" maxlength="9" />
+              <button class="sync-validate-btn" id="syncValidateBtn" title="Doğrula">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </div>
+            <div class="sync-validate-result" id="syncValidateResult"></div>
+          </div>
+
+          <div class="modal-field">
+            <label class="modal-label">Client Adı (opsiyonel)</label>
+            <input class="modal-input" type="text" id="syncClientName" placeholder="Bilgisayar adı..." />
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <div>
+        <button class="modal-btn-delete" id="syncDisconnectBtn" style="display:none;">Bağlantıyı Kes</button>
+      </div>
+      <div class="modal-footer-right">
+        <button class="modal-btn-cancel" id="syncModalCancel">Kapat</button>
+        <button class="modal-btn-save" id="syncJoinBtn">Bağlan</button>
       </div>
     </div>
   </div>
