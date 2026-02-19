@@ -136,16 +136,25 @@ export async function joinWorkspace(
       };
     }
 
-    const { workspace, client } = joinResponse.data;
+    const { workspace: rawWorkspace, client: rawClient } = joinResponse.data;
     const connectionId = crypto.randomUUID();
 
+    // Normalize server response: handle both camelCase and snake_case field names
+    const ws = rawWorkspace as unknown as Record<string, unknown>;
+    const cl = rawClient as unknown as Record<string, unknown>;
+    const workspaceId = (ws.id ?? ws.workspace_id) as string;
+    const workspaceName = (ws.name ?? ws.workspace_name) as string;
+    const syncStrategy = ((ws.syncStrategy ?? ws.sync_strategy) as SyncStrategy) || "auto-merge";
+    const currentVersion = ((ws.currentVersion ?? ws.current_version) as number) || 0;
+    const clientId = ((cl.clientId ?? cl.client_id) as string);
+
     // Step 2: Check if we already have a connection to this workspace
-    const existingConn = syncRepo.getConnectionByWorkspace(workspace.id);
+    const existingConn = syncRepo.getConnectionByWorkspace(workspaceId);
     if (existingConn) {
       // Reactivate existing connection
       syncRepo.updateConnectionVersion(
         existingConn.id,
-        workspace.currentVersion
+        currentVersion
       );
       if (!existingConn.is_active) {
         syncRepo.deleteConnection(existingConn.id);
@@ -156,7 +165,7 @@ export async function joinWorkspace(
         return {
           success: true,
           connectionId: existingConn.id,
-          workspaceName: workspace.name,
+          workspaceName,
           message: "Mevcut bağlantı yeniden kullanıldı",
         };
       }
@@ -166,12 +175,12 @@ export async function joinWorkspace(
     const connection = syncRepo.createConnection({
       id: connectionId,
       serverUrl,
-      workspaceId: workspace.id,
-      workspaceName: workspace.name,
-      clientId: client.clientId,
+      workspaceId,
+      workspaceName,
+      clientId,
       joinKey,
-      syncStrategy: workspace.syncStrategy,
-      currentVersion: workspace.currentVersion,
+      syncStrategy,
+      currentVersion,
     });
 
     // Step 4: Full sync to get initial data
@@ -187,13 +196,13 @@ export async function joinWorkspace(
     startBackgroundSync(connection);
 
     console.log(
-      `[Sync Engine] Successfully joined workspace: ${workspace.name}`
+      `[Sync Engine] Successfully joined workspace: ${workspaceName}`
     );
 
     return {
       success: true,
       connectionId,
-      workspaceName: workspace.name,
+      workspaceName,
     };
   } catch (err) {
     const message = (err as Error).message;
