@@ -4,7 +4,9 @@ import * as taskRepo from "../database/repositories/tasks";
 import * as changelogRepo from "../database/repositories/changelog";
 import * as settingsRepo from "../database/repositories/settings";
 import { getDatabase } from "../database/index";
+import * as syncEngine from "../sync/sync-engine";
 import type { TaskData } from "../database/repositories/tasks";
+import type { ConflictResolution } from "../sync/types";
 
 /* ── DTO types for IPC payloads ────────────────────────── */
 
@@ -301,4 +303,88 @@ export function registerIpcHandlers(): void {
       return true;
     }
   );
+
+  // ── Sync Handlers ───────────────────────────────────────
+
+  /** Test connectivity to a remote server */
+  ipcMain.handle("sync:testConnection", async (_event, serverUrl: string) => {
+    return syncEngine.testConnection(serverUrl);
+  });
+
+  /** Validate a join key without joining */
+  ipcMain.handle(
+    "sync:validateKey",
+    async (_event, serverUrl: string, joinKey: string) => {
+      return syncEngine.validateKey(serverUrl, joinKey);
+    }
+  );
+
+  /** Join a remote workspace via join key */
+  ipcMain.handle(
+    "sync:join",
+    async (_event, serverUrl: string, joinKey: string, clientName?: string) => {
+      return syncEngine.joinWorkspace(serverUrl, joinKey, clientName);
+    }
+  );
+
+  /** Disconnect from a remote workspace */
+  ipcMain.handle("sync:disconnect", (_event, connectionId?: string) => {
+    syncEngine.disconnect(connectionId);
+    return true;
+  });
+
+  /** Remove a connection entirely */
+  ipcMain.handle("sync:removeConnection", (_event, connectionId: string) => {
+    syncEngine.removeConnection(connectionId);
+    return true;
+  });
+
+  /** Push pending local changes to the remote server */
+  ipcMain.handle("sync:push", async (_event, connectionId?: string) => {
+    return syncEngine.push(connectionId);
+  });
+
+  /** Pull remote changes and apply locally */
+  ipcMain.handle("sync:pull", async (_event, connectionId?: string) => {
+    return syncEngine.pull(connectionId);
+  });
+
+  /** Perform a full sync (get complete snapshot) */
+  ipcMain.handle("sync:fullSync", async () => {
+    return syncEngine.performFullSync();
+  });
+
+  /** Send heartbeat to check for pending updates */
+  ipcMain.handle("sync:heartbeat", async (_event, connectionId?: string) => {
+    return syncEngine.sendHeartbeat(connectionId);
+  });
+
+  /** Get sync engine status */
+  ipcMain.handle("sync:status", () => {
+    return syncEngine.getStatus();
+  });
+
+  /** Get all sync connections */
+  ipcMain.handle("sync:getConnections", () => {
+    return syncEngine.getConnections();
+  });
+
+  /** Get pending conflicts */
+  ipcMain.handle("sync:getConflicts", (_event, connectionId?: string) => {
+    return syncEngine.getConflicts(connectionId);
+  });
+
+  /** Resolve a sync conflict */
+  ipcMain.handle(
+    "sync:resolveConflict",
+    (_event, conflictId: string, resolution: ConflictResolution) => {
+      syncEngine.resolveConflict(conflictId, resolution);
+      return true;
+    }
+  );
+
+  /** Check if there's an active remote connection */
+  ipcMain.handle("sync:hasConnection", () => {
+    return syncEngine.hasActiveConnection();
+  });
 }

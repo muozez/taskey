@@ -2013,6 +2013,451 @@ function updateSidebarUser() {
   avatarEl.textContent = (userProfile.firstName || 'K').charAt(0).toUpperCase();
 }
 
+// ── Remote Sync Modal ─────────────────────────────────
+
+let syncRefreshTimer = null;
+let syncSidebarTimer = null;
+
+// Cleanup intervals on page unload to prevent memory leaks
+window.addEventListener('beforeunload', () => {
+  if (syncRefreshTimer) {
+    clearInterval(syncRefreshTimer);
+    syncRefreshTimer = null;
+  }
+  if (syncSidebarTimer) {
+    clearInterval(syncSidebarTimer);
+    syncSidebarTimer = null;
+  }
+});
+
+function openSyncModal() {
+  const modal = document.getElementById('syncModal');
+  modal.classList.add('open');
+  refreshSyncUI();
+  // Auto-refresh every 5 seconds while modal is open
+  syncRefreshTimer = setInterval(refreshSyncUI, 5000);
+}
+
+function closeSyncModal() {
+  const modal = document.getElementById('syncModal');
+  modal.classList.remove('open');
+  if (syncRefreshTimer) {
+    clearInterval(syncRefreshTimer);
+    syncRefreshTimer = null;
+  }
+}
+
+async function refreshSyncUI() {
+  try {
+    const status = await db.sync.status();
+    updateSyncStatusBanner(status);
+    updateSyncSidebarIndicator(status);
+
+    if (status.connected) {
+      document.getElementById('syncConnectedView').style.display = '';
+      document.getElementById('syncJoinView').style.display = 'none';
+      document.getElementById('syncJoinBtn').style.display = 'none';
+      document.getElementById('syncDisconnectBtn').style.display = '';
+      updateSyncInfoGrid(status);
+      await refreshSyncConflicts(status);
+    } else {
+      document.getElementById('syncConnectedView').style.display = 'none';
+      document.getElementById('syncJoinView').style.display = '';
+      document.getElementById('syncJoinBtn').style.display = '';
+      document.getElementById('syncDisconnectBtn').style.display = 'none';
+    }
+  } catch (err) {
+    console.error('[Sync UI] Refresh error:', err);
+  }
+}
+
+function updateSyncStatusBanner(status) {
+  const dot = document.getElementById('syncStatusDot');
+  const text = document.getElementById('syncStatusText');
+  const detail = document.getElementById('syncStatusDetail');
+
+  dot.className = 'sync-status-dot';
+
+  if (!status.connected) {
+    dot.classList.add('dot-offline');
+    text.textContent = 'Bağlı değil';
+    detail.textContent = 'Remote bir workspace\'e bağlanın.';
+  } else if (status.isOnline) {
+    dot.classList.add('dot-online');
+    text.textContent = 'Çevrimiçi';
+    const syncedText = status.pendingPushCount > 0
+      ? `${status.pendingPushCount} değişiklik gönderiyi bekliyor`
+      : 'Tüm değişiklikler senkron';
+    detail.textContent = `${status.workspaceName} — ${syncedText}`;
+  } else {
+    dot.classList.add('dot-offline');
+    text.textContent = 'Çevrimdışı';
+    detail.textContent = `${status.workspaceName} — Sunucuya erişilemiyor, lokal çalışmaya devam ediliyor`;
+  }
+}
+
+function updateSyncInfoGrid(status) {
+  document.getElementById('syncInfoWorkspace').textContent = status.workspaceName || '—';
+  document.getElementById('syncInfoServer').textContent = status.serverUrl || '—';
+  document.getElementById('syncInfoVersion').textContent = `v${status.currentVersion} (synced: v${status.lastSyncedVersion})`;
+
+  const strategyLabels = {
+    'auto-merge': 'Otomatik Birleştir',
+    'last-writer-wins': 'Son Yazan Kazanır',
+    'server-wins': 'Sunucu Kazanır',
+    'manual': 'Manuel',
+  };
+  document.getElementById('syncInfoStrategy').textContent = strategyLabels[status.syncStrategy] || status.syncStrategy || '—';
+  document.getElementById('syncInfoPending').textContent = String(status.pendingPushCount);
+
+  const conflictsEl = document.getElementById('syncInfoConflicts');
+  conflictsEl.textContent = String(status.pendingConflicts);
+  if (status.pendingConflicts > 0) {
+    conflictsEl.style.color = 'var(--orange-text)';
+  } else {
+    conflictsEl.style.color = '';
+  }
+}
+
+function updateSyncSidebarIndicator(status) {
+  const indicator = document.getElementById('sidebarSyncStatus');
+  const label = document.getElementById('sidebarSyncLabel');
+
+  indicator.className = 'sidebar-sync-status';
+
+  if (!status.connected) {
+    indicator.classList.add('sync-offline');
+    label.textContent = 'Remote Sync';
+  } else if (status.isOnline) {
+    if (status.pendingPushCount > 0) {
+      indicator.classList.add('sync-pending');
+      label.textContent = `Sync (${status.pendingPushCount} beklemede)`;
+    } else {
+      indicator.classList.add('sync-online');
+      label.textContent = status.workspaceName || 'Remote Sync';
+    }
+  } else {
+    indicator.classList.add('sync-offline');
+    label.textContent = `${status.workspaceName || 'Sync'} (çevrimdışı)`;
+  }
+}
+
+async function refreshSyncConflicts(status) {
+  const section = document.getElementById('syncConflictsSection');
+  const list = document.getElementById('syncConflictList');
+
+  if (!status.pendingConflicts || status.pendingConflicts === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+
+  try {
+    const conflicts = await db.sync.getConflicts();
+    if (!conflicts || conflicts.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    // Clear existing conflicts
+    list.innerHTML = '';
+
+    for (const c of conflicts) {
+      // Create container for a single conflict item
+      const item = document.createElement('div');
+      item.className = 'sync-conflict-item';
+      if (c && (typeof c.id === 'string' || typeof c.id === 'number')) {
+        item.dataset.conflictId = String(c.id);
+      }
+
+      // Info section
+      const info = document.createElement('div');
+      info.className = 'sync-conflict-info';
+
+      const entityDiv = document.createElement('div');
+      entityDiv.className = 'sync-conflict-entity';
+      const entityText = typeof c.entity === 'string' ? c.entity : '';
+      let fieldOrId = '';
+      if (typeof c.field === 'string' && c.field.length > 0) {
+        fieldOrId = c.field;
+      } else if (typeof c.entity_id === 'string' && c.entity_id.length > 0) {
+        fieldOrId = c.entity_id.slice(0, 8);
+      }
+      entityDiv.textContent = fieldOrId ? `${entityText} — ${fieldOrId}` : entityText;
+
+      const detailDiv = document.createElement('div');
+      detailDiv.className = 'sync-conflict-detail';
+      const reasonText =
+        typeof c.reason === 'string' && c.reason.length > 0 ? c.reason : 'Alan çakışması';
+      detailDiv.textContent = reasonText;
+
+      info.appendChild(entityDiv);
+      info.appendChild(detailDiv);
+
+      // Actions section
+      const actions = document.createElement('div');
+      actions.className = 'sync-conflict-actions';
+
+      const acceptBtn = document.createElement('button');
+      acceptBtn.className = 'sync-conflict-btn sync-conflict-btn-accept';
+      acceptBtn.textContent = 'Kabul';
+      if (c && (typeof c.id === 'string' || typeof c.id === 'number')) {
+        acceptBtn.dataset.id = String(c.id);
+      }
+      acceptBtn.dataset.resolution = 'accept';
+
+      const rejectBtn = document.createElement('button');
+      rejectBtn.className = 'sync-conflict-btn sync-conflict-btn-reject';
+      rejectBtn.textContent = 'Reddet';
+      if (c && (typeof c.id === 'string' || typeof c.id === 'number')) {
+        rejectBtn.dataset.id = String(c.id);
+      }
+      rejectBtn.dataset.resolution = 'reject';
+
+      actions.appendChild(acceptBtn);
+      actions.appendChild(rejectBtn);
+
+      item.appendChild(info);
+      item.appendChild(actions);
+
+      list.appendChild(item);
+    }
+
+    // Bind resolve buttons
+    list.querySelectorAll('.sync-conflict-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const conflictId = btn.dataset.id;
+        const resolution = btn.dataset.resolution;
+        try {
+          await db.sync.resolveConflict(conflictId, resolution);
+          showToast(resolution === 'accept' ? 'Çakışma kabul edildi' : 'Çakışma reddedildi', 'success');
+          await refreshSyncUI();
+        } catch (err) {
+          showToast('Çakışma çözümlenemedi', 'error');
+        }
+      });
+    });
+  } catch (err) {
+    console.error('[Sync UI] Conflicts refresh error:', err);
+    section.style.display = 'none';
+  }
+}
+
+function initSyncModal() {
+  const syncModal = document.getElementById('syncModal');
+  const closeBtn = document.getElementById('syncModalClose');
+  const cancelBtn = document.getElementById('syncModalCancel');
+  const joinBtn = document.getElementById('syncJoinBtn');
+  const disconnectBtn = document.getElementById('syncDisconnectBtn');
+  const validateBtn = document.getElementById('syncValidateBtn');
+  const pushBtn = document.getElementById('syncPushBtn');
+  const pullBtn = document.getElementById('syncPullBtn');
+  const fullSyncBtn = document.getElementById('syncFullSyncBtn');
+  const sidebarSyncBtn = document.getElementById('sidebarSyncBtn');
+
+  // Open sync modal from sidebar
+  sidebarSyncBtn.addEventListener('click', openSyncModal);
+
+  // Close handlers
+  closeBtn.addEventListener('click', closeSyncModal);
+  cancelBtn.addEventListener('click', closeSyncModal);
+
+  // Overlay click to close
+  let syncMouseDownTarget = null;
+  syncModal.addEventListener('mousedown', (e) => { syncMouseDownTarget = e.target; });
+  syncModal.addEventListener('click', (e) => {
+    if (e.target === syncModal && syncMouseDownTarget === syncModal) closeSyncModal();
+    syncMouseDownTarget = null;
+  });
+
+  // Escape to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && syncModal.classList.contains('open')) {
+      closeSyncModal();
+    }
+  });
+
+  // Auto-uppercase join key input
+  const joinKeyInput = document.getElementById('syncJoinKey');
+  joinKeyInput.addEventListener('input', () => {
+    const v = joinKeyInput.value.toUpperCase().replace(/[^A-Z2-9\-]/g, '');
+    joinKeyInput.value = v;
+    // Auto-insert dash after 4 chars
+    if (v.length === 4 && !v.includes('-')) {
+      joinKeyInput.value = v + '-';
+    }
+  });
+
+  // Validate key
+  validateBtn.addEventListener('click', async () => {
+    const serverUrl = document.getElementById('syncServerUrl').value.trim();
+    const joinKey = document.getElementById('syncJoinKey').value.trim();
+    const resultEl = document.getElementById('syncValidateResult');
+
+    if (!serverUrl) {
+      resultEl.textContent = 'Sunucu adresi gerekli';
+      resultEl.className = 'sync-validate-result invalid';
+      return;
+    }
+    if (!joinKey || joinKey.length < 9) {
+      resultEl.textContent = 'Geçerli bir anahtar girin (XXXX-YYYY)';
+      resultEl.className = 'sync-validate-result invalid';
+      return;
+    }
+
+    resultEl.textContent = 'Doğrulanıyor...';
+    resultEl.className = 'sync-validate-result';
+
+    try {
+      const result = await db.sync.validateKey(serverUrl, joinKey);
+      if (result.valid) {
+        resultEl.textContent = '✓ Geçerli — ';
+        const workspaceName = result.workspaceName || 'Workspace bulundu';
+        resultEl.appendChild(document.createTextNode(workspaceName));
+        resultEl.className = 'sync-validate-result valid';
+      } else {
+        resultEl.textContent = `✗ ${result.message || 'Geçersiz anahtar'}`;
+        resultEl.className = 'sync-validate-result invalid';
+      }
+    } catch (err) {
+      resultEl.textContent = `✗ Bağlantı hatası`;
+      resultEl.className = 'sync-validate-result invalid';
+    }
+  });
+
+  // Join workspace
+  joinBtn.addEventListener('click', async () => {
+    const serverUrl = document.getElementById('syncServerUrl').value.trim();
+    const joinKey = document.getElementById('syncJoinKey').value.trim();
+    const clientName = document.getElementById('syncClientName').value.trim() || undefined;
+
+    if (!serverUrl) {
+      document.getElementById('syncServerUrl').classList.add('modal-input-error');
+      setTimeout(() => document.getElementById('syncServerUrl').classList.remove('modal-input-error'), 800);
+      return;
+    }
+    if (!joinKey || joinKey.length < 9) {
+      document.getElementById('syncJoinKey').classList.add('modal-input-error');
+      setTimeout(() => document.getElementById('syncJoinKey').classList.remove('modal-input-error'), 800);
+      return;
+    }
+
+    joinBtn.disabled = true;
+    joinBtn.textContent = 'Bağlanıyor...';
+
+    try {
+      const result = await db.sync.join(serverUrl, joinKey, clientName);
+      if (result.success) {
+        showToast(`${result.workspaceName || 'Workspace'} bağlantısı kuruldu!`, 'success');
+        // Clear form
+        document.getElementById('syncServerUrl').value = '';
+        document.getElementById('syncJoinKey').value = '';
+        document.getElementById('syncClientName').value = '';
+        document.getElementById('syncValidateResult').textContent = '';
+        // Refresh UI
+        await refreshSyncUI();
+        // Refresh project list (new data may have arrived via full sync)
+        await refreshAllProjects();
+        renderSidebarProjects();
+        if (currentView === 'dashboard') showDashboard();
+      } else {
+        showToast(result.message || 'Bağlantı kurulamadı', 'error');
+      }
+    } catch (err) {
+      showToast('Bağlantı hatası: ' + (err.message || 'Bilinmeyen hata'), 'error');
+    } finally {
+      joinBtn.disabled = false;
+      joinBtn.textContent = 'Bağlan';
+    }
+  });
+
+  // Disconnect
+  disconnectBtn.addEventListener('click', async () => {
+    try {
+      await db.sync.disconnect();
+      showToast('Bağlantı kesildi', 'info');
+      await refreshSyncUI();
+    } catch (err) {
+      showToast('Bağlantı kapatılamadı', 'error');
+    }
+  });
+
+  // Push
+  pushBtn.addEventListener('click', async () => {
+    pushBtn.disabled = true;
+    try {
+      const result = await db.sync.push();
+      if (result.success) {
+        if (result.pushed > 0) {
+          showToast(`${result.pushed} değişiklik gönderildi`, 'success');
+        } else {
+          showToast(result.message || 'Gönderilecek değişiklik yok', 'info');
+        }
+        if (result.conflicts > 0) {
+          showToast(`${result.conflicts} çakışma tespit edildi`, 'error');
+        }
+      } else {
+        showToast(result.message || 'Push başarısız', 'error');
+      }
+      await refreshSyncUI();
+    } catch (err) {
+      showToast('Push hatası', 'error');
+    } finally {
+      pushBtn.disabled = false;
+    }
+  });
+
+  // Pull
+  pullBtn.addEventListener('click', async () => {
+    pullBtn.disabled = true;
+    try {
+      const result = await db.sync.pull();
+      if (result.success) {
+        if (result.applied > 0) {
+          showToast(`${result.applied} değişiklik alındı`, 'success');
+          // Refresh local data
+          await refreshAllProjects();
+          renderSidebarProjects();
+          if (currentView === 'dashboard') showDashboard();
+          else if (currentView === 'project') renderProject(currentProject);
+        } else {
+          showToast(result.message || 'Zaten güncel', 'info');
+        }
+      } else {
+        showToast(result.message || 'Pull başarısız', 'error');
+      }
+      await refreshSyncUI();
+    } catch (err) {
+      showToast('Pull hatası', 'error');
+    } finally {
+      pullBtn.disabled = false;
+    }
+  });
+
+  // Full Sync
+  fullSyncBtn.addEventListener('click', async () => {
+    fullSyncBtn.disabled = true;
+    try {
+      const result = await db.sync.fullSync();
+      if (result.success) {
+        showToast(`Full sync tamamlandı (v${result.version || ''})`, 'success');
+        await refreshAllProjects();
+        renderSidebarProjects();
+        if (currentView === 'dashboard') showDashboard();
+        else if (currentView === 'project') renderProject(currentProject);
+      } else {
+        showToast(result.message || 'Full sync başarısız', 'error');
+      }
+      await refreshSyncUI();
+    } catch (err) {
+      showToast('Full sync hatası', 'error');
+    } finally {
+      fullSyncBtn.disabled = false;
+    }
+  });
+}
+
 // ── Toast Notification System ─────────────────────────
 
 function showToast(message, type = 'info') {
@@ -2636,6 +3081,7 @@ async function initApp() {
     initProjectRename();
     initDashboard();
     initSettingsModal();
+    initSyncModal();
     updateSidebarUser();
 
     // If no user profile, show welcome modal
@@ -2644,6 +3090,24 @@ async function initApp() {
     } else {
       showDashboard();
     }
+
+    // Initial sync status check for sidebar indicator
+    try {
+      const syncStatus = await db.sync.status();
+      updateSyncSidebarIndicator(syncStatus);
+    } catch (e) {
+      if (e && e.message && !e.message.includes('not available')) {
+        console.warn('[Taskey] Sync initialization warning:', e.message);
+      }
+    }
+
+    // Periodic sidebar sync indicator update (every 30s)
+    syncSidebarTimer = setInterval(async () => {
+      try {
+        const syncStatus = await db.sync.status();
+        updateSyncSidebarIndicator(syncStatus);
+      } catch (e) { /* ignore periodic update errors */ }
+    }, 30000);
   } catch (err) {
     console.error('[Taskey] Failed to initialize application:', err);
     showToast('Uygulama başlatılamadı. Lütfen yeniden deneyin.', 'error');

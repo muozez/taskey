@@ -136,4 +136,59 @@ contextBridge.exposeInMainWorld("taskey", {
     setAll: (aliases: Record<string, string>) =>
       ipcRenderer.invoke("db:aliases:setAll", aliases),
   },
+
+  // ── Remote Sync ─────────────────────────────────────────
+  sync: {
+    /** Test connectivity to a remote server */
+    testConnection: (serverUrl: string) =>
+      ipcRenderer.invoke("sync:testConnection", serverUrl),
+
+    /** Validate a join key without actually joining */
+    validateKey: (serverUrl: string, joinKey: string) =>
+      ipcRenderer.invoke("sync:validateKey", serverUrl, joinKey),
+
+    /** Join a remote workspace via join key */
+    join: (serverUrl: string, joinKey: string, clientName?: string) =>
+      ipcRenderer.invoke("sync:join", serverUrl, joinKey, clientName),
+
+    /** Disconnect from a remote workspace */
+    disconnect: (connectionId?: string) =>
+      ipcRenderer.invoke("sync:disconnect", connectionId),
+
+    /** Remove a connection entirely */
+    removeConnection: (connectionId: string) =>
+      ipcRenderer.invoke("sync:removeConnection", connectionId),
+
+    /** Push pending local changes to the remote server */
+    push: (connectionId?: string) =>
+      ipcRenderer.invoke("sync:push", connectionId),
+
+    /** Pull remote changes and apply locally */
+    pull: (connectionId?: string) =>
+      ipcRenderer.invoke("sync:pull", connectionId),
+
+    /** Perform a full sync (get complete snapshot) */
+    fullSync: () => ipcRenderer.invoke("sync:fullSync"),
+
+    /** Send heartbeat to check for pending updates */
+    heartbeat: (connectionId?: string) =>
+      ipcRenderer.invoke("sync:heartbeat", connectionId),
+
+    /** Get sync engine status */
+    status: () => ipcRenderer.invoke("sync:status"),
+
+    /** Get all sync connections */
+    getConnections: () => ipcRenderer.invoke("sync:getConnections"),
+
+    /** Get pending conflicts */
+    getConflicts: (connectionId?: string) =>
+      ipcRenderer.invoke("sync:getConflicts", connectionId),
+
+    /** Resolve a sync conflict (accept or reject) */
+    resolveConflict: (conflictId: string, resolution: "accept" | "reject") =>
+      ipcRenderer.invoke("sync:resolveConflict", conflictId, resolution),
+
+    /** Check if there's an active remote connection */
+    hasConnection: () => ipcRenderer.invoke("sync:hasConnection"),
+  },
 });
