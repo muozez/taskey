@@ -111,4 +111,46 @@ function runMigrations(
       );
     `);
   }
+
+  if (fromVersion < 3) {
+    console.log("[Taskey DB] Migrating to v3: adding sync_connections, sync_conflicts tables");
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS sync_connections (
+        id TEXT PRIMARY KEY,
+        server_url TEXT NOT NULL,
+        workspace_id TEXT NOT NULL,
+        workspace_name TEXT NOT NULL,
+        client_id TEXT NOT NULL,
+        join_key TEXT NOT NULL,
+        sync_strategy TEXT NOT NULL DEFAULT 'auto-merge',
+        current_version INTEGER NOT NULL DEFAULT 0,
+        last_synced_version INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE TABLE IF NOT EXISTS sync_conflicts (
+        id TEXT PRIMARY KEY,
+        connection_id TEXT NOT NULL,
+        diff_id TEXT NOT NULL,
+        entity TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        field TEXT DEFAULT NULL,
+        client_value TEXT DEFAULT NULL,
+        server_value TEXT DEFAULT NULL,
+        reason TEXT DEFAULT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        resolution TEXT DEFAULT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        resolved_at TEXT DEFAULT NULL,
+        FOREIGN KEY (connection_id) REFERENCES sync_connections(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sync_conflicts_connection
+        ON sync_conflicts(connection_id);
+      CREATE INDEX IF NOT EXISTS idx_sync_conflicts_status
+        ON sync_conflicts(status);
+    `);
+  }
 }

@@ -73,7 +73,7 @@
       "license": "LICENSE",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Taskey"
+      "shortcutName": "Taskey - Project Management Framework"
     },
     "portable": {
       "artifactName": "${productName}-${version}-portable.${ext}"
