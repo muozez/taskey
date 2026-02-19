@@ -20,8 +20,12 @@ import type {
   HeartbeatResponse,
 } from "./types";
 
+/** Maximum allowed response size in bytes (10 MB). */
+const MAX_RESPONSE_SIZE = 10 * 1024 * 1024;
+
 /**
  * Low-level HTTP request helper using Node.js modules.
+ * Warns when using insecure HTTP connections.
  */
 function httpRequest<T>(
   method: string,
@@ -33,6 +37,18 @@ function httpRequest<T>(
     const parsed = new URL(urlStr);
     const isHttps = parsed.protocol === "https:";
     const mod = isHttps ? https : http;
+
+    // Warn about insecure HTTP connections (allow for localhost/dev only)
+    if (!isHttps) {
+      const host = parsed.hostname;
+      const isLocal = host === "localhost" || host === "127.0.0.1" || host === "::1";
+      if (!isLocal) {
+        console.warn(
+          `[Sync API] WARNING: Using insecure HTTP connection to ${host}. ` +
+          "Consider using HTTPS for production servers to protect sensitive data."
+        );
+      }
+    }
 
     const requestHeaders: Record<string, string> = {
       "Content-Type": "application/json",
@@ -56,8 +72,22 @@ function httpRequest<T>(
 
     const req = mod.request(options, (res) => {
       const chunks: Buffer[] = [];
-      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      let totalSize = 0;
+      let destroyed = false;
+
+      res.on("data", (chunk: Buffer) => {
+        if (destroyed) return;
+        totalSize += chunk.length;
+        if (totalSize > MAX_RESPONSE_SIZE) {
+          destroyed = true;
+          req.destroy();
+          reject(new Error(`Response too large (exceeded ${MAX_RESPONSE_SIZE} bytes)`));
+          return;
+        }
+        chunks.push(chunk);
+      });
       res.on("end", () => {
+        if (destroyed) return;
         const raw = Buffer.concat(chunks).toString("utf-8");
         let data: T;
         try {
@@ -69,11 +99,15 @@ function httpRequest<T>(
       });
     });
 
+    let timedOut = false;
+
     req.on("error", (err) => {
+      if (timedOut) return;
       reject(new Error(`Network error: ${err.message}`));
     });
 
     req.on("timeout", () => {
+      timedOut = true;
       req.destroy();
       reject(new Error("Request timeout"));
     });

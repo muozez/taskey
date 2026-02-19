@@ -178,15 +178,12 @@ export async function joinWorkspace(
     // Step 2: Check if we already have a connection to this workspace
     const existingConn = syncRepo.getConnectionByWorkspace(workspaceId);
     if (existingConn) {
-      // Reactivate existing connection
-      syncRepo.updateConnectionVersion(
-        existingConn.id,
-        currentVersion
-      );
-      if (!existingConn.is_active) {
-        syncRepo.deleteConnection(existingConn.id);
-      } else {
-        // Already connected
+      if (existingConn.is_active) {
+        // Already connected — reactivate and reuse
+        syncRepo.updateConnectionVersion(
+          existingConn.id,
+          currentVersion
+        );
         activeConnectionId = existingConn.id;
         startBackgroundSync(existingConn);
         return {
@@ -195,6 +192,9 @@ export async function joinWorkspace(
           workspaceName,
           message: "Mevcut bağlantı yeniden kullanıldı",
         };
+      } else {
+        // Inactive connection — delete it so a fresh one is created below
+        syncRepo.deleteConnection(existingConn.id);
       }
     }
 
@@ -233,7 +233,7 @@ export async function joinWorkspace(
     };
   } catch (err) {
     const raw = (err as Error).message;
-    console.error(`[Sync Engine] Join failed: ${raw}`);
+    console.error("[Sync Engine] Join failed");
     return { success: false, message: friendlyError(err as Error) };
   }
 }
@@ -636,52 +636,83 @@ export function getConnections() {
 
 // ── Background Sync ─────────────────────────────────────
 
+let backgroundSyncInFlight = false;
+
+async function withBackgroundSyncLock<T>(fn: () => Promise<T>): Promise<T | void> {
+  if (backgroundSyncInFlight) {
+    // Another background sync operation is already in progress; skip this cycle.
+    return;
+  }
+  backgroundSyncInFlight = true;
+  try {
+    return await fn();
+  } finally {
+    backgroundSyncInFlight = false;
+  }
+}
+
 /**
  * Start background sync timers (heartbeat + periodic pull).
+ * Initial sync operations complete before periodic timers are started
+ * to prevent overlapping operations.
  */
 function startBackgroundSync(connection: SyncConnection): void {
   stopBackgroundSync();
 
   console.log(`[Sync Engine] Starting background sync for ${connection.workspace_name}`);
 
-  // Initial heartbeat
-  sendHeartbeat(connection.id).then((result) => {
-    if (result.hasPendingUpdates) {
-      pull(connection.id).catch(console.error);
-    }
-  }).catch(console.error);
-
-  // Push any pending changes
-  const pendingCount = diffProducer.getUnsyncedCount();
-  if (pendingCount > 0) {
-    push(connection.id).catch(console.error);
-  }
-
-  // Periodic heartbeat
-  heartbeatTimer = setInterval(async () => {
+  // Run initial sync (heartbeat + conditional pull + initial push) before starting timers
+  (async () => {
     try {
-      const result = await sendHeartbeat(connection.id);
-      if (result.hasPendingUpdates) {
-        await pull(connection.id);
-      }
-    } catch (err) {
-      console.error("[Sync Engine] Heartbeat cycle error:", err);
-    }
-  }, HEARTBEAT_INTERVAL);
+      await withBackgroundSyncLock(async () => {
+        // Initial heartbeat
+        const heartbeatResult = await sendHeartbeat(connection.id);
+        if (heartbeatResult.hasPendingUpdates) {
+          await pull(connection.id);
+        }
 
-  // Periodic pull
-  pullTimer = setInterval(async () => {
-    try {
-      // Push first, then pull
-      const unsyncedCount = diffProducer.getUnsyncedCount();
-      if (unsyncedCount > 0) {
-        await push(connection.id);
-      }
-      await pull(connection.id);
+        // Push any pending changes
+        const pendingCount = diffProducer.getUnsyncedCount();
+        if (pendingCount > 0) {
+          await push(connection.id);
+        }
+      });
     } catch (err) {
-      console.error("[Sync Engine] Pull cycle error:", err);
+      console.error("[Sync Engine] Initial background sync error:", err);
     }
-  }, PULL_INTERVAL);
+
+    // Periodic heartbeat
+    heartbeatTimer = setInterval(() => {
+      void withBackgroundSyncLock(async () => {
+        try {
+          const result = await sendHeartbeat(connection.id);
+          if (result.hasPendingUpdates) {
+            await pull(connection.id);
+          }
+        } catch (err) {
+          console.error("[Sync Engine] Heartbeat cycle error:", err);
+        }
+      });
+    }, HEARTBEAT_INTERVAL);
+
+    // Periodic pull
+    pullTimer = setInterval(() => {
+      void withBackgroundSyncLock(async () => {
+        try {
+          // Push first, then pull
+          const unsyncedCount = diffProducer.getUnsyncedCount();
+          if (unsyncedCount > 0) {
+            await push(connection.id);
+          }
+          await pull(connection.id);
+        } catch (err) {
+          console.error("[Sync Engine] Pull cycle error:", err);
+        }
+      });
+    }, PULL_INTERVAL);
+  })().catch((err) => {
+    console.error("[Sync Engine] Unexpected error starting background sync:", err);
+  });
 }
 
 /**

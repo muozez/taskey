@@ -151,6 +151,8 @@ function runMigrations(
         ON sync_conflicts(connection_id);
       CREATE INDEX IF NOT EXISTS idx_sync_conflicts_status
         ON sync_conflicts(status);
+      CREATE INDEX IF NOT EXISTS idx_changelog_synced_connection
+        ON change_log(synced);
     `);
   }
 }
