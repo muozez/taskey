@@ -2016,6 +2016,19 @@ function updateSidebarUser() {
 // ── Remote Sync Modal ─────────────────────────────────
 
 let syncRefreshTimer = null;
+let syncSidebarTimer = null;
+
+// Cleanup intervals on page unload to prevent memory leaks
+window.addEventListener('beforeunload', () => {
+  if (syncRefreshTimer) {
+    clearInterval(syncRefreshTimer);
+    syncRefreshTimer = null;
+  }
+  if (syncSidebarTimer) {
+    clearInterval(syncSidebarTimer);
+    syncSidebarTimer = null;
+  }
+});
 
 function openSyncModal() {
   const modal = document.getElementById('syncModal');
@@ -2147,21 +2160,69 @@ async function refreshSyncConflicts(status) {
       return;
     }
 
-    let html = '';
+    // Clear existing conflicts
+    list.innerHTML = '';
+
     for (const c of conflicts) {
-      html += `
-        <div class="sync-conflict-item" data-conflict-id="${c.id}">
-          <div class="sync-conflict-info">
-            <div class="sync-conflict-entity">${c.entity} — ${c.field || c.entity_id.slice(0, 8)}</div>
-            <div class="sync-conflict-detail">${c.reason || 'Alan çakışması'}</div>
-          </div>
-          <div class="sync-conflict-actions">
-            <button class="sync-conflict-btn sync-conflict-btn-accept" data-id="${c.id}" data-resolution="accept">Kabul</button>
-            <button class="sync-conflict-btn sync-conflict-btn-reject" data-id="${c.id}" data-resolution="reject">Reddet</button>
-          </div>
-        </div>`;
+      // Create container for a single conflict item
+      const item = document.createElement('div');
+      item.className = 'sync-conflict-item';
+      if (c && (typeof c.id === 'string' || typeof c.id === 'number')) {
+        item.dataset.conflictId = String(c.id);
+      }
+
+      // Info section
+      const info = document.createElement('div');
+      info.className = 'sync-conflict-info';
+
+      const entityDiv = document.createElement('div');
+      entityDiv.className = 'sync-conflict-entity';
+      const entityText = typeof c.entity === 'string' ? c.entity : '';
+      let fieldOrId = '';
+      if (typeof c.field === 'string' && c.field.length > 0) {
+        fieldOrId = c.field;
+      } else if (typeof c.entity_id === 'string' && c.entity_id.length > 0) {
+        fieldOrId = c.entity_id.slice(0, 8);
+      }
+      entityDiv.textContent = fieldOrId ? `${entityText} — ${fieldOrId}` : entityText;
+
+      const detailDiv = document.createElement('div');
+      detailDiv.className = 'sync-conflict-detail';
+      const reasonText =
+        typeof c.reason === 'string' && c.reason.length > 0 ? c.reason : 'Alan çakışması';
+      detailDiv.textContent = reasonText;
+
+      info.appendChild(entityDiv);
+      info.appendChild(detailDiv);
+
+      // Actions section
+      const actions = document.createElement('div');
+      actions.className = 'sync-conflict-actions';
+
+      const acceptBtn = document.createElement('button');
+      acceptBtn.className = 'sync-conflict-btn sync-conflict-btn-accept';
+      acceptBtn.textContent = 'Kabul';
+      if (c && (typeof c.id === 'string' || typeof c.id === 'number')) {
+        acceptBtn.dataset.id = String(c.id);
+      }
+      acceptBtn.dataset.resolution = 'accept';
+
+      const rejectBtn = document.createElement('button');
+      rejectBtn.className = 'sync-conflict-btn sync-conflict-btn-reject';
+      rejectBtn.textContent = 'Reddet';
+      if (c && (typeof c.id === 'string' || typeof c.id === 'number')) {
+        rejectBtn.dataset.id = String(c.id);
+      }
+      rejectBtn.dataset.resolution = 'reject';
+
+      actions.appendChild(acceptBtn);
+      actions.appendChild(rejectBtn);
+
+      item.appendChild(info);
+      item.appendChild(actions);
+
+      list.appendChild(item);
     }
-    list.innerHTML = html;
 
     // Bind resolve buttons
     list.querySelectorAll('.sync-conflict-btn').forEach(btn => {
@@ -2251,7 +2312,9 @@ function initSyncModal() {
     try {
       const result = await db.sync.validateKey(serverUrl, joinKey);
       if (result.valid) {
-        resultEl.textContent = `✓ Geçerli — ${result.workspaceName || 'Workspace bulundu'}`;
+        resultEl.textContent = '✓ Geçerli — ';
+        const workspaceName = result.workspaceName || 'Workspace bulundu';
+        resultEl.appendChild(document.createTextNode(workspaceName));
         resultEl.className = 'sync-validate-result valid';
       } else {
         resultEl.textContent = `✗ ${result.message || 'Geçersiz anahtar'}`;
@@ -3032,14 +3095,18 @@ async function initApp() {
     try {
       const syncStatus = await db.sync.status();
       updateSyncSidebarIndicator(syncStatus);
-    } catch (e) { /* ignore if sync not available */ }
+    } catch (e) {
+      if (e && e.message && !e.message.includes('not available')) {
+        console.warn('[Taskey] Sync initialization warning:', e.message);
+      }
+    }
 
     // Periodic sidebar sync indicator update (every 30s)
-    setInterval(async () => {
+    syncSidebarTimer = setInterval(async () => {
       try {
         const syncStatus = await db.sync.status();
         updateSyncSidebarIndicator(syncStatus);
-      } catch (e) { /* ignore */ }
+      } catch (e) { /* ignore periodic update errors */ }
     }, 30000);
   } catch (err) {
     console.error('[Taskey] Failed to initialize application:', err);

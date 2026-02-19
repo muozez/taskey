@@ -358,9 +358,49 @@ function applyTaskDiff(diff: DiffData): void {
         value = typeof value === "string" ? value : JSON.stringify(value ?? []);
       }
 
-      db.prepare(
-        `UPDATE tasks SET ${dbField} = ?, updated_at = ? WHERE id = ?`
-      ).run(value, new Date().toISOString(), diff.entityId);
+      // Use static SQL per column to avoid dynamic interpolation of column names
+      const now = new Date().toISOString();
+      switch (dbField) {
+        case "title":
+          db.prepare("UPDATE tasks SET title = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "description":
+          db.prepare("UPDATE tasks SET description = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "priority":
+          db.prepare("UPDATE tasks SET priority = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "avatar":
+          db.prepare("UPDATE tasks SET avatar = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "avatar_color":
+          db.prepare("UPDATE tasks SET avatar_color = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "due_date":
+          db.prepare("UPDATE tasks SET due_date = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "due_time":
+          db.prepare("UPDATE tasks SET due_time = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "duration":
+          db.prepare("UPDATE tasks SET duration = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "progress":
+          db.prepare("UPDATE tasks SET progress = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "tags":
+          db.prepare("UPDATE tasks SET tags = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "checklist":
+          db.prepare("UPDATE tasks SET checklist = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        case "status":
+          db.prepare("UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?").run(value, now, diff.entityId);
+          break;
+        default:
+          console.warn(`[Sync] Unhandled task db field: ${dbField}`);
+          return;
+      }
       break;
     }
 
@@ -370,6 +410,13 @@ function applyTaskDiff(diff: DiffData): void {
     }
   }
 }
+
+/** Whitelist of allowed task column names for dynamic UPDATE queries. */
+const ALLOWED_TASK_COLUMNS = new Set([
+  "title", "description", "priority", "avatar", "avatar_color",
+  "due_date", "due_time", "duration", "progress", "status",
+  "project_id", "tags", "checklist",
+]);
 
 function applyTaskUpdate(db: ReturnType<typeof getDatabase>, taskId: string, data: Record<string, unknown>): void {
   const fields: string[] = [];
@@ -396,19 +443,23 @@ function applyTaskUpdate(db: ReturnType<typeof getDatabase>, taskId: string, dat
 
   for (const [key, val] of Object.entries(data)) {
     const dbField = mapping[key];
-    if (dbField && !fields.includes(dbField)) {
+    if (dbField && ALLOWED_TASK_COLUMNS.has(dbField) && !fields.includes(dbField)) {
       fields.push(`${dbField} = ?`);
       values.push(val);
     }
   }
 
   if (data.tags !== undefined) {
-    fields.push("tags = ?");
-    values.push(typeof data.tags === "string" ? data.tags : JSON.stringify(data.tags));
+    if (!fields.some(f => f.startsWith("tags"))) {
+      fields.push("tags = ?");
+      values.push(typeof data.tags === "string" ? data.tags : JSON.stringify(data.tags));
+    }
   }
   if (data.checklist !== undefined) {
-    fields.push("checklist = ?");
-    values.push(typeof data.checklist === "string" ? data.checklist : JSON.stringify(data.checklist));
+    if (!fields.some(f => f.startsWith("checklist"))) {
+      fields.push("checklist = ?");
+      values.push(typeof data.checklist === "string" ? data.checklist : JSON.stringify(data.checklist));
+    }
   }
 
   if (fields.length === 0) return;
@@ -464,6 +515,13 @@ function applyProjectDiff(diff: DiffData): void {
       const fieldMap: Record<string, string> = { name: "name", color: "color" };
       const dbField = fieldMap[diff.field];
       if (!dbField) return;
+
+      // Validate column name against whitelist before dynamic SQL
+      const allowedProjectCols = new Set(["name", "color"]);
+      if (!allowedProjectCols.has(dbField)) {
+        console.warn(`[Sync] Unhandled project db field: ${dbField}`);
+        return;
+      }
 
       db.prepare(
         `UPDATE projects SET ${dbField} = ?, updated_at = ? WHERE id = ?`
@@ -527,6 +585,13 @@ function applyColumnDiff(diff: DiffData): void {
       const fieldMap: Record<string, string> = { label: "label", is_done: "is_done", isDone: "is_done" };
       const dbField = fieldMap[diff.field];
       if (!dbField) return;
+
+      // Validate column name against whitelist before dynamic SQL
+      const allowedColumnCols = new Set(["label", "is_done"]);
+      if (!allowedColumnCols.has(dbField)) {
+        console.warn(`[Sync] Unhandled column db field: ${dbField}`);
+        return;
+      }
 
       // Column has composite PK (id, project_id), so we update all matching
       db.prepare(
