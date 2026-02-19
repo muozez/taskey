@@ -31,6 +31,33 @@ import type {
   PendingConflict,
 } from "./types";
 
+// ── Friendly Error Messages ─────────────────────────────
+
+/**
+ * Translate raw network/system errors into user-friendly Turkish messages.
+ * Keeps console logs technical, but returns clean text for the UI.
+ */
+function friendlyError(err: Error): string {
+  const msg = err.message;
+
+  if (msg.includes("ECONNREFUSED"))
+    return "Sunucuya bağlanılamıyor. Sunucunun çalıştığından ve adresin doğru olduğundan emin olun.";
+  if (msg.includes("ENOTFOUND"))
+    return "Sunucu adresi bulunamadı. Lütfen URL'yi kontrol edin.";
+  if (msg.includes("ETIMEDOUT") || msg.includes("Request timeout"))
+    return "Sunucu yanıt vermiyor. İnternet bağlantınızı kontrol edin veya daha sonra tekrar deneyin.";
+  if (msg.includes("ECONNRESET"))
+    return "Sunucu bağlantısı beklenmedik şekilde kesildi. Lütfen tekrar deneyin.";
+  if (msg.includes("EHOSTUNREACH"))
+    return "Sunucuya erişilemiyor. Ağ bağlantınızı kontrol edin.";
+  if (msg.includes("CERT_") || msg.includes("ERR_TLS"))
+    return "Sunucu ile güvenli bağlantı kurulamadı (SSL/TLS hatası).";
+  if (msg.includes("Network error"))
+    return "Ağ hatası oluştu. İnternet bağlantınızı kontrol edin.";
+
+  return msg;
+}
+
 // ── Engine State ────────────────────────────────────────
 
 let activeConnectionId: string | null = null;
@@ -97,7 +124,7 @@ export async function validateKey(
     }
     return { valid: false, message: response.data.message ?? "Geçersiz anahtar" };
   } catch (err) {
-    return { valid: false, message: `Bağlantı hatası: ${(err as Error).message}` };
+    return { valid: false, message: friendlyError(err as Error) };
   }
 }
 
@@ -205,9 +232,9 @@ export async function joinWorkspace(
       workspaceName,
     };
   } catch (err) {
-    const message = (err as Error).message;
-    console.error(`[Sync Engine] Join failed: ${message}`);
-    return { success: false, message: `Katılım hatası: ${message}` };
+    const raw = (err as Error).message;
+    console.error(`[Sync Engine] Join failed: ${raw}`);
+    return { success: false, message: friendlyError(err as Error) };
   }
 }
 
@@ -329,9 +356,9 @@ export async function push(connectionId?: string): Promise<{
       conflicts: pushResult.conflicts,
     };
   } catch (err) {
-    const message = (err as Error).message;
-    console.error(`[Sync Engine] Push failed: ${message}`);
-    return { success: false, pushed: 0, conflicts: 0, message };
+    const raw = (err as Error).message;
+    console.error(`[Sync Engine] Push failed: ${raw}`);
+    return { success: false, pushed: 0, conflicts: 0, message: friendlyError(err as Error) };
   }
 }
 
@@ -424,9 +451,9 @@ export async function pull(connectionId?: string): Promise<{
       conflicts: pullResult.pendingConflicts?.length ?? 0,
     };
   } catch (err) {
-    const message = (err as Error).message;
-    console.error(`[Sync Engine] Pull failed: ${message}`);
-    return { success: false, applied: 0, conflicts: 0, message };
+    const raw = (err as Error).message;
+    console.error(`[Sync Engine] Pull failed: ${raw}`);
+    return { success: false, applied: 0, conflicts: 0, message: friendlyError(err as Error) };
   }
 }
 
@@ -488,9 +515,9 @@ export async function performFullSync(
 
     return { success: true, version: fullSyncResult.currentVersion };
   } catch (err) {
-    const message = (err as Error).message;
-    console.error(`[Sync Engine] Full sync failed: ${message}`);
-    return { success: false, message };
+    const raw = (err as Error).message;
+    console.error(`[Sync Engine] Full sync failed: ${raw}`);
+    return { success: false, message: friendlyError(err as Error) };
   }
 }
 
@@ -548,7 +575,7 @@ export async function sendHeartbeat(connectionId?: string): Promise<{
       success: false,
       hasPendingUpdates: false,
       pendingConflicts: 0,
-      message: (err as Error).message,
+      message: friendlyError(err as Error),
     };
   }
 }
