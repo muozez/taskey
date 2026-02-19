@@ -2316,6 +2316,198 @@ kbd {
   color: var(--text-500);
 }
 
+/* ── Onboarding Modal ────────────────────────────────── */
+
+.modal-onboarding {
+  max-width: 520px;
+}
+
+.onboarding-content {
+  padding: 32px 32px 0;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-step {
+  display: none;
+  text-align: center;
+  animation: onboardingFadeIn 0.3s ease;
+}
+
+.onboarding-step.active {
+  display: block;
+}
+
+@keyframes onboardingFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.onboarding-step-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+}
+
+.onboarding-step-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-900);
+  margin-bottom: 10px;
+}
+
+.onboarding-step-desc {
+  font-size: 14px;
+  color: var(--text-600);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.onboarding-step-desc strong {
+  color: var(--text-900);
+  font-weight: 600;
+}
+
+.onboarding-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-mock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: var(--surface-100);
+  border: 1px dashed var(--border-300);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-700);
+}
+
+.onboarding-mock-cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--surface-50);
+  border: 1px solid var(--border-200);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono, 'SF Mono', 'Fira Code', monospace);
+  font-size: 13px;
+  color: var(--text-700);
+}
+
+.onboarding-cmd-prompt {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.onboarding-cmd-text {
+  color: var(--text-800);
+}
+
+.onboarding-mock-hint {
+  font-size: 12px;
+  color: var(--text-400);
+}
+
+.onboarding-cmd-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 24px;
+  text-align: left;
+}
+
+.onboarding-cmd-item {
+  font-size: 13px;
+  color: var(--text-600);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-cmd-item code {
+  font-family: var(--font-mono, 'SF Mono', 'Fira Code', monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--surface-100);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  min-width: 52px;
+  text-align: center;
+}
+
+.onboarding-sync-mock {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: var(--surface-50);
+  border: 1px solid var(--border-200);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-600);
+}
+
+.onboarding-sync-icon {
+  color: var(--primary);
+  display: flex;
+}
+
+/* Onboarding Indicators */
+
+.onboarding-indicators {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 0 8px;
+}
+
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-300);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.onboarding-dot.active {
+  background: var(--primary);
+  transform: scale(1.25);
+}
+
+.onboarding-dot:hover {
+  background: var(--text-400);
+}
+
+.modal-onboarding .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.onboarding-step-counter {
+  font-size: 13px;
+  color: var(--text-400);
+  font-weight: 500;
+}
+
+.onboarding-prev {
+  font-size: 13px;
+}
+
 /* ── Settings Modal ──────────────────────────────────── */
 
 .modal-settings {
