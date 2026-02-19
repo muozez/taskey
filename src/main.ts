@@ -2,6 +2,7 @@ import { app, BrowserWindow, nativeImage } from "electron";
 import * as path from "path";
 import { initDatabase, closeDatabase } from "./database/index";
 import { registerIpcHandlers } from "./ipc/handlers";
+import { initSyncEngine, shutdownSyncEngine } from "./sync/sync-engine";
 
 function createWindow(): void {
   const iconPath = path.join(__dirname, "..", "public", "logo256.png");
@@ -26,6 +27,9 @@ app.whenReady().then(() => {
 
     // Register IPC handlers for renderer <-> main process communication
     registerIpcHandlers();
+
+    // Initialize sync engine (resumes active connections)
+    initSyncEngine();
   } catch (err) {
     console.error('[Taskey] Critical initialization error:', err);
     const { dialog } = require('electron');
@@ -53,5 +57,6 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  shutdownSyncEngine();
   closeDatabase();
 });
