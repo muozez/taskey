@@ -87,6 +87,9 @@
         </div>
       </div>
       <div class="topbar-actions">
+        <button class="btn-ai-decompose" id="btnOpenAiDecompose" title="AI Asistanı ile Projeyi Planla">
+          🤖 AI ile Planla
+        </button>
       </div>
     </header>
 
@@ -813,6 +816,71 @@
         <button class="modal-btn-cancel" id="syncModalCancel">Kapat</button>
         <button class="modal-btn-save" id="syncJoinBtn">Bağlan</button>
       </div>
+    </div>
+  </div>
+<!-- ── AI Task Decomposition Modal ────────────────────── -->
+<div class="modal-overlay" id="aiDecomposeModal">
+  <div class="modal-container modal-settings" style="max-width: 620px;">
+    <div class="modal-header">
+      <h2 class="modal-title">🤖 AI ile Proje Planla</h2>
+      <button class="modal-close" id="aiDecomposeClose" title="Kapat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    
+    <!-- State 1: Input Form -->
+    <div class="modal-body" id="aiDecomposeStateInput">
+      <div class="settings-section">
+        <p class="settings-hint">Projenizin kapsamını ve hedeflerini belirtin. AI, bu girdileri kullanarak projenizi küçük, yönetilebilir görevlere bölecek ve planlayacaktır.</p>
+        
+        <div class="modal-field">
+          <label class="modal-label">Proje/Görev Kapsamı</label>
+          <textarea class="modal-input" id="aiDecomposeScope" rows="4" placeholder="Örn: Taskey uygulamasına AI destekli proje planlama özelliği eklenecek. Arayüzde modal pencereleri, backend'de ise API entegrasyonları yapılacak..." style="resize: vertical; min-height: 80px; font-family: inherit; padding: 8px 12px;"></textarea>
+        </div>
+        
+        <div class="modal-field" style="margin-top: 12px;">
+          <label class="modal-label">Beklenen Sonuç</label>
+          <textarea class="modal-input" id="aiDecomposeOutcome" rows="2" placeholder="Örn: Ayarlar menüsünden AI sağlayıcılarının kurulabilmesi ve kanban panosunda 'AI ile Planla' butonunun çalışır hale gelmesi." style="resize: vertical; min-height: 50px; font-family: inherit; padding: 8px 12px;"></textarea>
+        </div>
+
+        <div class="modal-row" style="margin-top: 12px;">
+          <div class="modal-field">
+            <label class="modal-label">Başlangıç Tarihi</label>
+            <input class="modal-input" type="date" id="aiDecomposeStart" />
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Bitiş Tarihi</label>
+            <input class="modal-input" type="date" id="aiDecomposeEnd" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- State 2: Loading Animation -->
+    <div class="modal-body" id="aiDecomposeStateLoading" style="display: none; padding: 40px 24px; text-align: center; flex-direction: column; align-items: center; justify-content: center; gap: 20px;">
+      <div class="ai-loader-spinner"></div>
+      <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--text-800);" id="aiDecomposeLoadingText">Yapay Zeka planlama yapıyor...</h3>
+      <p style="margin: 0; font-size: 13px; color: var(--text-500);">Bu işlem sağlayıcıya ve proje büyüklüğüne bağlı olarak 10-15 saniye sürebilir.</p>
+    </div>
+
+    <!-- State 3: Preview/Results Confirm -->
+    <div class="modal-body" id="aiDecomposeStatePreview" style="display: none; max-height: 480px; overflow-y: auto;">
+      <div class="settings-section">
+        <h3 class="settings-section-title">Yapay Zeka Planlama Özeti</h3>
+        <p class="settings-hint" id="aiDecomposeSummary" style="font-style: italic; background: var(--slate-50); padding: 12px; border-radius: var(--radius-lg); border-left: 3px solid var(--primary);"></p>
+        
+        <h3 class="settings-section-title" style="margin-top: 16px;">Oluşturulan Görevler</h3>
+        <p class="settings-hint">Panoya aktarmak istediğiniz görevleri seçin.</p>
+        <div id="aiDecomposeList" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+          <!-- JS will render task items here -->
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="modal-btn-cancel" id="aiDecomposeCancel">İptal</button>
+      <button class="modal-btn-save" id="aiDecomposeSubmitBtn">Planı Oluştur</button>
+      <button class="modal-btn-save" id="aiDecomposeAddBtn" style="display: none;">Görevleri Panoya Aktar</button>
     </div>
   </div>
 </div>
