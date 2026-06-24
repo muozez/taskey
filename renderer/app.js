@@ -1,3 +1,21 @@
+// ── Global Error Handling for Diagnostics ──────────────────
+window.addEventListener('error', (e) => {
+  console.error('GLOBAL ERROR:', e.error);
+  if (typeof showToast === 'function') {
+    showToast(`HATA: ${e.message}`, 'error');
+  } else {
+    alert(`Uncaught error: ${e.message}`);
+  }
+});
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('GLOBAL REJECTION:', e.reason);
+  if (typeof showToast === 'function') {
+    showToast(`REDDEDİLDİ: ${e.reason}`, 'error');
+  } else {
+    alert(`Unhandled rejection: ${e.reason}`);
+  }
+});
+
 // ── Database API (exposed via preload) ─────────────────
 const db = window.taskey;
 
