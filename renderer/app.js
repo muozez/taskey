@@ -2157,6 +2157,249 @@ function initSettingsModal() {
   });
 }
 
+// ── AI Decomposition Modal ────────────────────────────
+let tempGeneratedTasks = [];
+
+function formatDateIso(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function openAiDecomposeModal() {
+  const modal = document.getElementById('aiDecomposeModal');
+  modal.classList.add('open');
+
+  // Set default dates
+  const today = new Date();
+  const nextWeek = new Date();
+  nextWeek.setDate(today.getDate() + 7);
+
+  document.getElementById('aiDecomposeStart').value = formatDateIso(today);
+  document.getElementById('aiDecomposeEnd').value = formatDateIso(nextWeek);
+
+  // Reset inputs
+  document.getElementById('aiDecomposeScope').value = '';
+  document.getElementById('aiDecomposeOutcome').value = '';
+
+  // Show state 1, hide others
+  document.getElementById('aiDecomposeStateInput').style.display = '';
+  document.getElementById('aiDecomposeStateLoading').style.display = 'none';
+  document.getElementById('aiDecomposeStatePreview').style.display = 'none';
+
+  // Toggle footer buttons
+  document.getElementById('aiDecomposeSubmitBtn').style.display = '';
+  document.getElementById('aiDecomposeAddBtn').style.display = 'none';
+}
+
+function closeAiDecomposeModal() {
+  document.getElementById('aiDecomposeModal').classList.remove('open');
+}
+
+function renderAiDecomposePreview(result) {
+  tempGeneratedTasks = result.tasks || [];
+  
+  const summaryEl = document.getElementById('aiDecomposeSummary');
+  summaryEl.textContent = result.summary || 'Proje başarıyla planlandı. Aşağıdaki görevleri panonuza ekleyebilirsiniz.';
+
+  const listEl = document.getElementById('aiDecomposeList');
+  listEl.innerHTML = '';
+
+  if (tempGeneratedTasks.length === 0) {
+    listEl.innerHTML = '<div class="dash-upcoming-empty">Görev oluşturulamadı.</div>';
+  } else {
+    tempGeneratedTasks.forEach((task, index) => {
+      const item = document.createElement('div');
+      item.className = 'ai-task-item';
+      
+      const priorityLabel = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+      
+      item.innerHTML = `
+        <input type="checkbox" class="ai-task-item-checkbox" data-index="${index}" checked />
+        <div class="ai-task-item-content">
+          <div class="ai-task-item-header">
+            <span class="ai-task-item-title">${escapeHtml(task.title)}</span>
+            <span class="priority-badge ${task.priority.toLowerCase()}">${priorityLabel}</span>
+          </div>
+          <div class="ai-task-item-desc">${escapeHtml(task.description || '')}</div>
+          <div class="ai-task-item-meta">
+            <span>Süre: ${task.estimatedDays} gün</span>
+            <span>Başlangıç: ${task.startDate}</span>
+            <span>Bitiş: ${task.dueDate}</span>
+            <span>Kolon: ${escapeHtml(task.status)}</span>
+            ${task.tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join('')}
+          </div>
+        </div>
+      `;
+      listEl.appendChild(item);
+    });
+  }
+
+  // Switch to Preview state
+  document.getElementById('aiDecomposeStateLoading').style.display = 'none';
+  document.getElementById('aiDecomposeStatePreview').style.display = '';
+  
+  // Toggle footer buttons
+  document.getElementById('aiDecomposeSubmitBtn').style.display = 'none';
+  document.getElementById('aiDecomposeAddBtn').style.display = '';
+}
+
+function initAiDecomposeModal() {
+  const modal = document.getElementById('aiDecomposeModal');
+  const openBtn = document.getElementById('btnOpenAiDecompose');
+  const closeBtn = document.getElementById('aiDecomposeClose');
+  const cancelBtn = document.getElementById('aiDecomposeCancel');
+  const submitBtn = document.getElementById('aiDecomposeSubmitBtn');
+  const addBtn = document.getElementById('aiDecomposeAddBtn');
+
+  openBtn.addEventListener('click', openAiDecomposeModal);
+  closeBtn.addEventListener('click', closeAiDecomposeModal);
+  cancelBtn.addEventListener('click', closeAiDecomposeModal);
+
+  // Overlay click to close
+  let mouseDownTarget = null;
+  modal.addEventListener('mousedown', (e) => { mouseDownTarget = e.target; });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal && mouseDownTarget === modal) closeAiDecomposeModal();
+    mouseDownTarget = null;
+  });
+
+  // Submit/Plan
+  submitBtn.addEventListener('click', async () => {
+    const scope = document.getElementById('aiDecomposeScope').value.trim();
+    const outcome = document.getElementById('aiDecomposeOutcome').value.trim();
+    const start = document.getElementById('aiDecomposeStart').value;
+    const end = document.getElementById('aiDecomposeEnd').value;
+
+    if (!scope) {
+      document.getElementById('aiDecomposeScope').classList.add('modal-input-error');
+      setTimeout(() => document.getElementById('aiDecomposeScope').classList.remove('modal-input-error'), 800);
+      return;
+    }
+
+    if (!outcome) {
+      document.getElementById('aiDecomposeOutcome').classList.add('modal-input-error');
+      setTimeout(() => document.getElementById('aiDecomposeOutcome').classList.remove('modal-input-error'), 800);
+      return;
+    }
+
+    if (new Date(start) > new Date(end)) {
+      showToast('Başlangıç tarihi bitiş tarihinden sonra olamaz.', 'error');
+      return;
+    }
+
+    // Load settings to check AI config
+    const settings = await db.settings.getAll();
+    const provider = settings['ai_provider'];
+    const model = settings['ai_model'];
+    const apiKey = settings['ai_api_key'];
+
+    if (!provider || !apiKey) {
+      showToast('Lütfen önce Ayarlar > AI Asistan sekmesinden AI sağlayıcınızı ve API anahtarınızı yapılandırın.', 'error');
+      closeAiDecomposeModal();
+      openSettingsModal();
+      // Switch settings tab to AI
+      setTimeout(() => {
+        const aiTabBtn = document.querySelector('.settings-tab-btn[data-tab="ai"]');
+        if (aiTabBtn) aiTabBtn.click();
+      }, 300);
+      return;
+    }
+
+    // Switch to loading state
+    document.getElementById('aiDecomposeStateInput').style.display = 'none';
+    document.getElementById('aiDecomposeStateLoading').style.display = 'flex';
+    submitBtn.style.display = 'none';
+
+    try {
+      const payload = {
+        projectId: currentProject,
+        provider,
+        model,
+        apiKey,
+        taskScope: scope,
+        expectedOutcome: outcome,
+        startDate: start,
+        endDate: end
+      };
+
+      const result = await db.ai.generateTasks(payload);
+      renderAiDecomposePreview(result);
+    } catch (err) {
+      console.error('[AI Plan] Decomposition error:', err);
+      showToast(`Plan oluşturulamadı: ${err.message || err}`, 'error');
+      // Revert to input state
+      document.getElementById('aiDecomposeStateInput').style.display = '';
+      document.getElementById('aiDecomposeStateLoading').style.display = 'none';
+      submitBtn.style.display = '';
+    }
+  });
+
+  // Transfer/Add Tasks
+  addBtn.addEventListener('click', async () => {
+    const checkedBoxes = document.querySelectorAll('.ai-task-item-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+      showToast('Lütfen eklemek için en az bir görev seçin.', 'error');
+      return;
+    }
+
+    addBtn.disabled = true;
+    addBtn.textContent = 'Ekleniyor...';
+
+    try {
+      const project = projectData[currentProject];
+      const validStatuses = new Set(['backlog', ...project.columns.map(c => c.id)]);
+
+      for (const box of checkedBoxes) {
+        const index = parseInt(box.dataset.index);
+        const task = tempGeneratedTasks[index];
+        if (!task) continue;
+
+        const targetStatus = validStatuses.has(task.status) ? task.status : 'backlog';
+
+        const taskData = {
+          id: generateId(),
+          title: task.title,
+          desc: task.description,
+          priority: task.priority,
+          avatar: '',
+          avatarColor: 'gray',
+          dueDate: task.dueDate,
+          dueTime: '',
+          duration: `${task.estimatedDays}d`,
+          progress: 0,
+          tags: task.tags,
+          checklist: [],
+          createdAt: new Date().toISOString()
+        };
+
+        await db.tasks.create(currentProject, targetStatus, taskData);
+      }
+
+      await refreshProjectData(currentProject);
+      renderBacklog();
+      renderKanban();
+
+      closeAiDecomposeModal();
+      showToast(`${checkedBoxes.length} görev başarıyla eklendi!`, 'success');
+    } catch (err) {
+      console.error('[AI Plan] Failed to add tasks:', err);
+      showToast(`Görevler eklenirken hata oluştu: ${err.message || err}`, 'error');
+    } finally {
+      addBtn.disabled = false;
+      addBtn.textContent = 'Görevleri Panoya Aktar';
+    }
+  });
+
+  // Escape to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) {
+      closeAiDecomposeModal();
+    }
+  });
+}
+
 // ── Sidebar User Display ──────────────────────────────
 
 function updateSidebarUser() {
@@ -3231,6 +3474,7 @@ async function initApp() {
     initProjectRename();
     initDashboard();
     initSettingsModal();
+    initAiDecomposeModal();
     initSyncModal();
     updateSidebarUser();
 
