@@ -200,5 +200,7 @@ contextBridge.exposeInMainWorld("taskey", {
       ipcRenderer.invoke("ai:generateTasks", payload),
     decomposeSingleTask: (payload: any) =>
       ipcRenderer.invoke("ai:decomposeSingleTask", payload),
+    analyzeProject: (payload: any) =>
+      ipcRenderer.invoke("ai:analyzeProject", payload),
   },
 });

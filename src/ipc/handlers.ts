@@ -8,7 +8,7 @@ import * as syncEngine from "../sync/sync-engine";
 import type { TaskData } from "../database/repositories/tasks";
 import type { ConflictResolution } from "../sync/types";
 import * as aiService from "../ai/ai-service";
-import { buildDecompositionPrompt } from "../ai/prompt-builder";
+import { buildDecompositionPrompt, buildProjectSummaryPrompt } from "../ai/prompt-builder";
 
 /* ── DTO types for IPC payloads ────────────────────────── */
 
@@ -454,6 +454,61 @@ export function registerIpcHandlers(): void {
       }
     ) => {
       return aiService.decomposeSingleTask(payload);
+    }
+  );
+
+  ipcMain.handle(
+    "ai:analyzeProject",
+    async (
+      _event,
+      payload: {
+        provider: string;
+        apiKey: string;
+        model: string;
+        projectId: string;
+      }
+    ) => {
+      const project = projectRepo.getProject(payload.projectId);
+      const projectName = project ? project.name : "İsimsiz Proje";
+      const columns = project ? project.columns : [];
+
+      let existingTasks: any[] = [];
+      try {
+        const tasksMap = taskRepo.getTasksByProject(payload.projectId);
+        for (const key of Object.keys(tasksMap)) {
+          const list = tasksMap[key];
+          if (Array.isArray(list)) {
+            existingTasks.push(...list.map(t => ({
+              title: t.title || "",
+              description: t.desc || "",
+              status: key,
+              priority: t.priority || "medium",
+              tags: t.tags || []
+            })));
+          }
+        }
+      } catch (e) {
+        console.error("[ai:analyzeProject] Failed to fetch existing tasks:", e);
+      }
+
+      const prompt = buildProjectSummaryPrompt({
+        projectName,
+        columns: [{ id: "backlog", label: "Backlog" }, ...columns],
+        tasks: existingTasks
+      });
+
+      const rawPayload = {
+        projectId: payload.projectId,
+        provider: payload.provider as any,
+        apiKey: payload.apiKey,
+        model: payload.model,
+        taskScope: "",
+        expectedOutcome: "",
+        startDate: "",
+        endDate: ""
+      };
+
+      return aiService.analyzeProject(rawPayload, prompt);
     }
   );
 }

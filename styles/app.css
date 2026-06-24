@@ -3261,4 +3261,30 @@ kbd {
   transform: translateY(0);
 }
 
+.btn-ai-audit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-ai-audit:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.btn-ai-audit:active {
+  transform: translateY(0);
+}
+
+
 

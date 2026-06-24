@@ -90,6 +90,9 @@
         <button class="btn-ai-decompose" id="btnOpenAiDecompose" title="AI Asistanı ile Projeyi Planla">
           🤖 AI ile Planla
         </button>
+        <button class="btn-ai-audit" id="btnOpenAiAudit" title="Projenin Yapay Zeka Analizini Al">
+          ✨ AI Durum Analizi
+        </button>
       </div>
     </header>
 
@@ -885,6 +888,60 @@
       <button class="modal-btn-cancel" id="aiDecomposeCancel">İptal</button>
       <button class="modal-btn-save" id="aiDecomposeSubmitBtn">Planı Oluştur</button>
       <button class="modal-btn-save" id="aiDecomposeAddBtn" style="display: none;">Görevleri Panoya Aktar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── AI Project Summary / Audit Modal ────────────────── -->
+<div class="modal-overlay" id="aiAuditModal">
+  <div class="modal-container modal-settings" style="max-width: 650px;">
+    <div class="modal-header">
+      <h2 class="modal-title">🤖 Yapay Zeka Durum Analizi</h2>
+      <button class="modal-close" id="aiAuditClose" title="Kapat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    
+    <!-- State 1: Loading -->
+    <div class="modal-body" id="aiAuditStateLoading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px;">
+      <div class="ai-loader-spinner"></div>
+      <p style="margin-top: 16px; font-weight: 500; color: var(--text-600);">Görevler analiz ediliyor ve durum özeti çıkarılıyor...</p>
+      <p class="settings-hint">Bu işlem projedeki görev sayısına bağlı olarak birkaç saniye sürebilir.</p>
+    </div>
+    
+    <!-- State 2: Content -->
+    <div class="modal-body" id="aiAuditStateContent" style="display: none; max-height: 480px; overflow-y: auto; padding: 20px;">
+      
+      <!-- Score Circle & Summary -->
+      <div style="display: flex; align-items: center; gap: 20px; background: var(--slate-50); padding: 16px; border-radius: var(--radius-lg); margin-bottom: 20px; border-left: 4px solid var(--primary);">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); color: white; flex-shrink: 0; box-shadow: 0 4px 8px rgba(124, 58, 237, 0.2);">
+          <span style="font-size: 24px; font-weight: 800;" id="aiAuditScore">0</span>
+          <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Bağlam</span>
+        </div>
+        <div>
+          <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: var(--text-800);">Genel Durum ve Bağlam Uyumu</h4>
+          <p id="aiAuditGeneralSummary" style="margin: 0; font-size: 13px; color: var(--text-600); line-height: 1.5; font-style: italic;"></p>
+        </div>
+      </div>
+
+      <!-- Optimization Advice -->
+      <div class="settings-section" style="margin-bottom: 20px;">
+        <h3 class="settings-section-title">🚀 İş Akışı & Süreç Optimizasyonu</h3>
+        <p id="aiAuditWorkflowOptimization" style="background: #fdf2f8; border-left: 3px solid #db2777; padding: 12px; border-radius: var(--radius-md); font-size: 13px; color: #9d174d; line-height: 1.5; font-style: italic; margin-top: 8px;"></p>
+      </div>
+
+      <!-- Recommendations List -->
+      <div class="settings-section">
+        <h3 class="settings-section-title" style="margin-bottom: 8px;">📋 İyileştirme Tavsiyeleri</h3>
+        <div id="aiAuditRecommendationsList" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- JS will render recommendations here -->
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="modal-btn-cancel" id="aiAuditCancel">Kapat</button>
     </div>
   </div>
 </div>

@@ -2460,6 +2460,104 @@ async function decomposeSingleTaskUi(index, btn) {
   }
 }
 
+function openAiAuditModal() {
+  const modal = document.getElementById('aiAuditModal');
+  modal.classList.add('open');
+
+  // Switch to loading state
+  document.getElementById('aiAuditStateLoading').style.display = 'flex';
+  document.getElementById('aiAuditStateContent').style.display = 'none';
+
+  runProjectAnalysis();
+}
+
+function closeAiAuditModal() {
+  document.getElementById('aiAuditModal').classList.remove('open');
+}
+
+async function runProjectAnalysis() {
+  try {
+    const settings = await db.settings.getAll();
+    const provider = settings['ai_provider'];
+    const model = settings['ai_model'];
+    const apiKey = settings['ai_api_key'];
+
+    if (!provider || !apiKey) {
+      showToast('Lütfen önce Ayarlar > AI Asistan sekmesinden AI sağlayıcınızı ve API anahtarınızı yapılandırın.', 'error');
+      closeAiAuditModal();
+      openSettingsModal();
+      setTimeout(() => {
+        const aiTabBtn = document.querySelector('.settings-tab-btn[data-tab="ai"]');
+        if (aiTabBtn) aiTabBtn.click();
+      }, 300);
+      return;
+    }
+
+    const result = await db.ai.analyzeProject({
+      provider,
+      model,
+      apiKey,
+      projectId: currentProject
+    });
+
+    renderProjectAnalysis(result);
+  } catch (err) {
+    console.error('[AI Audit] Analysis error:', err);
+    showToast(`Analiz oluşturulamadı: ${err.message || err}`, 'error');
+    closeAiAuditModal();
+  }
+}
+
+function renderProjectAnalysis(result) {
+  document.getElementById('aiAuditScore').textContent = result.contextScore;
+  document.getElementById('aiAuditGeneralSummary').textContent = result.generalSummary;
+  document.getElementById('aiAuditWorkflowOptimization').textContent = result.workflowOptimization;
+
+  const listEl = document.getElementById('aiAuditRecommendationsList');
+  listEl.innerHTML = '';
+
+  if (!result.recommendations || result.recommendations.length === 0) {
+    listEl.innerHTML = '<div class="dash-upcoming-empty">İyileştirme tavsiyesi bulunamadı. Görevleriniz gayet düzenli görünüyor!</div>';
+  } else {
+    result.recommendations.forEach(rec => {
+      const item = document.createElement('div');
+      item.style.background = 'var(--slate-50)';
+      item.style.padding = '12px';
+      item.style.borderRadius = 'var(--radius-md)';
+      item.style.borderLeft = '3px solid var(--primary-light)';
+      
+      item.innerHTML = `
+        <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: var(--text-800);">${escapeHtml(rec.title)}</h4>
+        <p style="margin: 0; font-size: 12px; color: var(--text-600); line-height: 1.4;">${escapeHtml(rec.desc)}</p>
+      `;
+      listEl.appendChild(item);
+    });
+  }
+
+  // Switch to Content state
+  document.getElementById('aiAuditStateLoading').style.display = 'none';
+  document.getElementById('aiAuditStateContent').style.display = 'block';
+}
+
+function initAiAuditModal() {
+  const modal = document.getElementById('aiAuditModal');
+  const openBtn = document.getElementById('btnOpenAiAudit');
+  const closeBtn = document.getElementById('aiAuditClose');
+  const cancelBtn = document.getElementById('aiAuditCancel');
+
+  if (openBtn) openBtn.addEventListener('click', openAiAuditModal);
+  if (closeBtn) closeBtn.addEventListener('click', closeAiAuditModal);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeAiAuditModal);
+
+  // Overlay click to close
+  let mouseDownTarget = null;
+  modal.addEventListener('mousedown', (e) => { mouseDownTarget = e.target; });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal && mouseDownTarget === modal) closeAiAuditModal();
+    mouseDownTarget = null;
+  });
+}
+
 function initAiDecomposeModal() {
   const modal = document.getElementById('aiDecomposeModal');
   const openBtn = document.getElementById('btnOpenAiDecompose');
@@ -3690,6 +3788,7 @@ async function initApp() {
     initDashboard();
     initSettingsModal();
     initAiDecomposeModal();
+    initAiAuditModal();
     initSyncModal();
     updateSidebarUser();
 
