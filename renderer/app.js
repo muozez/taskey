@@ -1069,6 +1069,13 @@ function parseCommandInput(raw) {
     return result;
   }
 
+  // :ai new [PROJECT_NAME]
+  const aiNewMatch = raw.match(/^:ai\s+new(?:\s+(.+))?$/i);
+  if (aiNewMatch) {
+    result.command = { type: 'ai_new', projectName: aiNewMatch[1] ? aiNewMatch[1].trim() : '' };
+    return result;
+  }
+
   // :clear
   if (raw.match(/^:clear$/i)) {
     result.command = { type: 'clear' };
@@ -1274,6 +1281,34 @@ async function cmdCreateProject(name, color) {
   renderProject(slug);
 }
 
+/** :ai new PROJECT_NAME — open AI plan modal for project */
+async function cmdAiNew(projectName) {
+  if (!projectName) {
+    if (!currentProject) {
+      showToast('Lütfen önce bir proje seçin', 'error');
+      return;
+    }
+    openAiDecomposeModal();
+    return;
+  }
+
+  const query = projectName.toLowerCase();
+  let targetSlug = null;
+  for (const [slug, proj] of Object.entries(projectData)) {
+    if (slug.toLowerCase() === query || proj.name.toLowerCase() === query) {
+      targetSlug = slug;
+      break;
+    }
+  }
+
+  if (targetSlug) {
+    renderProject(targetSlug);
+    openAiDecomposeModal();
+  } else {
+    showToast(`"${projectName}" adında bir proje bulunamadı`, 'error');
+  }
+}
+
 // ── Command Dispatcher ────────────────────────────────
 
 async function executeCommand(parsed) {
@@ -1287,6 +1322,7 @@ async function executeCommand(parsed) {
       case 'col':     await cmdCreateColumn(cmd.name); showToast(`"${cmd.name}" kolonu oluşturuldu`, 'success'); return;
       case 'delcol':  await cmdDeleteColumn(cmd.name); showToast('Kolon silindi', 'success'); return;
       case 'proj':    await cmdCreateProject(cmd.name, cmd.color); showToast(`"${cmd.name}" projesi oluşturuldu`, 'success'); return;
+      case 'ai_new':  await cmdAiNew(cmd.projectName); return;
       case 'clear':
         lastQuickSettings = { priority: 'medium', avatarColor: 'blue', tags: [], duration: '' };
         showToast('Ayarlar sıfırlandı', 'info');
@@ -1888,6 +1924,7 @@ let settingsAliasesTemp = {};
 const AI_MODELS = {
   gemini: [
     { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
     { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' }
   ],
   openai: [
