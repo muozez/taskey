@@ -138,6 +138,21 @@ Sync Engine, Electron main process'te çalışır ve şu bileşenlerden oluşur:
 | **last-writer-wins** | Her zaman en son timestamp kazanır | Orta — veri kaybı riski |
 | **server-wins** | Sunucudaki mevcut versiyon korunur, client diff reject | Düşük — client kaybeder |
 | **manual** | Tüm çakışmalar UI üzerinden kullanıcıya yönlendirilir | Yok — ama yavaş |
+# 🤖 Yapay Zeka Asistanı ve Akıllı Planlama Engine
+
+Taskey, projelerinizi hızlandırmak ve görevlerinizi optimize etmek için gelişmiş bir Yapay Zeka Planlama Asistanı içerir. OpenAI, Anthropic (Claude) veya Google Gemini (Gemini 2.5 Flash Lite dahil) modelleriyle entegre olarak çalışır.
+
+## Temel Özellikler
+
+- **AI ile Otomatik Proje Planlama**: Projenin kapsamını, hedeflerini, başlangıç ve bitiş tarihlerini belirterek projenizi otomatik olarak kanban kartlarına bölebilirsiniz. Yapay Zeka, görev sürelerini ve önceliklerini gerçekçi bir şekilde belirler.
+- **Mantık ve Bağımlılık Analizi (Logic Analysis)**: Yapay Zeka, yeni bir planlama yaparken backlog ve panodaki mevcut görevleri analiz eder. Hangi işlerin birbiriyle bağımlı olduğunu veya hangi sırayla başlanırsa sürecin daha verimli ilerleyeceğini bildiren kritik yol analizleri sunar.
+- **Mikro Görevlere Bölme (⚡ Böl)**: Çok büyük, karmaşık veya belirsiz epic/task kartlarını tek bir tıklama ile 3-5 story pointlik daha küçük, yönetilebilir mikro görevlere parçalayabilirsiniz.
+- **Yapay Zeka Durum Analizi (✨ AI Durum Analizi)**: Projenin durumunu istediğiniz zaman denetleyebilirsiniz. Projedeki tüm görevleri analiz eden Yapay Zeka; projenin netliğini ölçen bir **Context Score (Bağlam Skoru)** hesaplar, genel durum özeti sunar, iş akışı darboğazlarını tespit eder ve görevleri netleştirmek için özel tavsiye listeleri oluşturur.
+- **Gelişmiş CLI Entegrasyonu**: `:ai new` komutu ile projenizi komut satırından hands-free olarak planlayabilirsiniz. Tarih parametreleri için göreceli zaman ofsetleri (`3d` = 3 gün sonra, `1w` = 1 hafta sonra, `3mo` = 3 ay sonra vb.) desteklenir.
+
+## Ayarlar ve Yapılandırma
+
+Yapay Zeka özelliklerini kullanmak için **Ayarlar > AI Asistan** sekmesinden tercih ettiğiniz sağlayıcıyı seçip API anahtarınızı (API Key) tanımlamanız yeterlidir.
 
 # IPC Kanalları
 
