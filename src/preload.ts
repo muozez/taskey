@@ -198,5 +198,7 @@ contextBridge.exposeInMainWorld("taskey", {
       ipcRenderer.invoke("ai:testConnection", provider, apiKey, model),
     generateTasks: (payload: any) =>
       ipcRenderer.invoke("ai:generateTasks", payload),
+    decomposeSingleTask: (payload: any) =>
+      ipcRenderer.invoke("ai:decomposeSingleTask", payload),
   },
 });

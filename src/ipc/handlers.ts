@@ -404,15 +404,56 @@ export function registerIpcHandlers(): void {
     async (_event, payload: aiService.AiGeneratePayload) => {
       const project = projectRepo.getProject(payload.projectId);
       const columns = project ? project.columns : [];
+
+      let existingTasks: any[] = [];
+      if (payload.projectId) {
+        try {
+          const tasksMap = taskRepo.getTasksByProject(payload.projectId);
+          for (const key of Object.keys(tasksMap)) {
+            const list = tasksMap[key];
+            if (Array.isArray(list)) {
+              existingTasks.push(...list.map(t => ({
+                title: t.title || "",
+                description: t.desc || "",
+                status: key
+              })));
+            }
+          }
+        } catch (e) {
+          console.error("[ai:generateTasks] Failed to fetch existing tasks:", e);
+        }
+      }
+
       const prompt = buildDecompositionPrompt({
         columns: [{ id: "backlog", label: "Backlog" }, ...columns],
         startDate: payload.startDate,
         endDate: payload.endDate,
         taskScope: payload.taskScope,
-        expectedOutcome: payload.expectedOutcome
+        expectedOutcome: payload.expectedOutcome,
+        existingTasks
       });
 
       return aiService.generateTasks(payload, prompt);
+    }
+  );
+
+  ipcMain.handle(
+    "ai:decomposeSingleTask",
+    async (
+      _event,
+      payload: {
+        provider: "gemini" | "openai" | "anthropic";
+        apiKey: string;
+        model: string;
+        title: string;
+        description: string;
+        startDate: string;
+        dueDate: string;
+        status: string;
+        tags: string[];
+      }
+    ) => {
+      return aiService.decomposeSingleTask(payload);
     }
   );
 }

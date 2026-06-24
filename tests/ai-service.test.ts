@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { extractJson, generateTasks, testConnection } from "../src/ai/ai-service";
+import { extractJson, generateTasks, testConnection, decomposeSingleTask } from "../src/ai/ai-service";
 
 // Mock OpenAI
 vi.mock("openai", () => {
@@ -14,6 +14,31 @@ vi.mock("openai", () => {
         choices: [{ message: { content: "Pong" } }]
       });
     }
+    // If it is a single task decomposition prompt
+    if (args.messages && args.messages[0] && args.messages[0].content.includes("Büyük Görev:")) {
+      return Promise.resolve({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                tasks: [
+                  {
+                    title: "Micro Task 1",
+                    description: "Micro Desc 1",
+                    priority: "low",
+                    estimatedDays: 1,
+                    startDate: "2026-06-24",
+                    dueDate: "2026-06-25",
+                    tags: ["micro"],
+                    status: "in-progress"
+                  }
+                ]
+              })
+            }
+          }
+        ]
+      });
+    }
     // Otherwise return success task list
     return Promise.resolve({
       choices: [
@@ -21,6 +46,7 @@ vi.mock("openai", () => {
           message: {
             content: JSON.stringify({
               summary: "Test summary",
+              logicAnalysis: "Logical analysis advice",
               tasks: [
                 {
                   title: "Test Task",
@@ -138,9 +164,32 @@ describe("ai-service", () => {
 
       const result = await generateTasks(payload, "system prompt");
       expect(result.summary).toBe("Test summary");
+      expect(result.logicAnalysis).toBe("Logical analysis advice");
       expect(result.tasks.length).toBe(1);
       expect(result.tasks[0].title).toBe("Test Task");
       expect(result.tasks[0].priority).toBe("high");
+    });
+  });
+
+  describe("decomposeSingleTask", () => {
+    it("should successfully decompose single task into micro-tasks via OpenAI", async () => {
+      const payload = {
+        provider: "openai" as const,
+        apiKey: "sk-test",
+        model: "gpt-4o",
+        title: "Büyük Görev",
+        description: "Büyük Açıklama",
+        startDate: "2026-06-24",
+        dueDate: "2026-06-30",
+        status: "backlog",
+        tags: ["test"]
+      };
+
+      const result = await decomposeSingleTask(payload);
+      expect(result.length).toBe(1);
+      expect(result[0].title).toBe("Micro Task 1");
+      expect(result[0].priority).toBe("low");
+      expect(result[0].status).toBe("in-progress");
     });
   });
 
