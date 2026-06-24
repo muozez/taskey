@@ -7,6 +7,8 @@ import { getDatabase } from "../database/index";
 import * as syncEngine from "../sync/sync-engine";
 import type { TaskData } from "../database/repositories/tasks";
 import type { ConflictResolution } from "../sync/types";
+import * as aiService from "../ai/ai-service";
+import { buildDecompositionPrompt } from "../ai/prompt-builder";
 
 /* ── DTO types for IPC payloads ────────────────────────── */
 
@@ -387,4 +389,30 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("sync:hasConnection", () => {
     return syncEngine.hasActiveConnection();
   });
+
+  // ── AI Handlers ─────────────────────────────────────────
+
+  ipcMain.handle(
+    "ai:testConnection",
+    async (_event, provider: string, apiKey: string, model: string) => {
+      return aiService.testConnection(provider, apiKey, model);
+    }
+  );
+
+  ipcMain.handle(
+    "ai:generateTasks",
+    async (_event, payload: aiService.AiGeneratePayload) => {
+      const project = projectRepo.getProject(payload.projectId);
+      const columns = project ? project.columns : [];
+      const prompt = buildDecompositionPrompt({
+        columns: [{ id: "backlog", label: "Backlog" }, ...columns],
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        taskScope: payload.taskScope,
+        expectedOutcome: payload.expectedOutcome
+      });
+
+      return aiService.generateTasks(payload, prompt);
+    }
+  );
 }

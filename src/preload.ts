@@ -191,4 +191,12 @@ contextBridge.exposeInMainWorld("taskey", {
     /** Check if there's an active remote connection */
     hasConnection: () => ipcRenderer.invoke("sync:hasConnection"),
   },
+
+  // ── AI Assistant ────────────────────────────────────────
+  ai: {
+    testConnection: (provider: string, apiKey: string, model: string) =>
+      ipcRenderer.invoke("ai:testConnection", provider, apiKey, model),
+    generateTasks: (payload: any) =>
+      ipcRenderer.invoke("ai:generateTasks", payload),
+  },
 });
