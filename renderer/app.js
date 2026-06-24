@@ -1885,7 +1885,35 @@ function showOnboarding() {
 
 let settingsAliasesTemp = {};
 
-function openSettingsModal() {
+const AI_MODELS = {
+  gemini: [
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' }
+  ],
+  openai: [
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o-mini' },
+    { value: 'gpt-4-turbo', label: 'GPT-4-turbo' }
+  ],
+  anthropic: [
+    { value: 'claude-opus-4-5', label: 'Claude 4.5 Opus' },
+    { value: 'claude-sonnet-4-5', label: 'Claude 4.5 Sonnet' },
+    { value: 'claude-haiku-4-5', label: 'Claude 4.5 Haiku' }
+  ]
+};
+
+function updateModelOptions(provider, selectEl) {
+  selectEl.innerHTML = '';
+  const models = AI_MODELS[provider] || [];
+  models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.value;
+    opt.textContent = m.label;
+    selectEl.appendChild(opt);
+  });
+}
+
+async function openSettingsModal() {
   const modal = document.getElementById('settingsModal');
   modal.classList.add('open');
 
@@ -1893,6 +1921,37 @@ function openSettingsModal() {
   document.getElementById('settingsLastName').value = userProfile.lastName;
   settingsAliasesTemp = { ...commandAliases };
   renderAliasListInSettings();
+
+  // Reset tab to Genel when opening
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === 'general');
+  });
+  document.querySelectorAll('.settings-tab-content').forEach(content => {
+    content.classList.toggle('active', content.id === 'settingsTabGeneral');
+  });
+
+  // Load AI settings
+  try {
+    const settings = await db.settings.getAll();
+    const provider = settings['ai_provider'] || 'gemini';
+    const model = settings['ai_model'] || 'gemini-2.0-flash';
+    const apiKey = settings['ai_api_key'] || '';
+
+    const providerSelect = document.getElementById('settingsAiProvider');
+    const modelSelect = document.getElementById('settingsAiModel');
+    const apiKeyInput = document.getElementById('settingsAiApiKey');
+
+    providerSelect.value = provider;
+    updateModelOptions(provider, modelSelect);
+    modelSelect.value = model;
+    apiKeyInput.value = apiKey;
+    apiKeyInput.type = 'password';
+
+    document.getElementById('settingsAiTestResult').textContent = '';
+    document.getElementById('settingsAiTestResult').className = '';
+  } catch (err) {
+    console.error('[Settings UI] Failed to load AI settings:', err);
+  }
 }
 
 function closeSettingsModal() {
@@ -1933,6 +1992,13 @@ function initSettingsModal() {
   const addAliasBtn = document.getElementById('addAliasBtn');
   const settingsModal = document.getElementById('settingsModal');
 
+  const providerSelect = document.getElementById('settingsAiProvider');
+  const modelSelect = document.getElementById('settingsAiModel');
+  const apiKeyInput = document.getElementById('settingsAiApiKey');
+  const apiKeyToggle = document.getElementById('settingsAiToggleApiKey');
+  const testBtn = document.getElementById('settingsAiTestBtn');
+  const testResult = document.getElementById('settingsAiTestResult');
+
   // Open via sidebar settings button
   document.querySelector('.user-settings').addEventListener('click', openSettingsModal);
 
@@ -1945,6 +2011,73 @@ function initSettingsModal() {
   settingsModal.addEventListener('click', (e) => {
     if (e.target === settingsModal && settingsMouseDownTarget === settingsModal) closeSettingsModal();
     settingsMouseDownTarget = null;
+  });
+
+  // Tab switching logic
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.dataset.tab;
+      document.querySelectorAll('.settings-tab-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+      });
+      document.querySelectorAll('.settings-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `settingsTab${targetTab.charAt(0).toUpperCase() + targetTab.slice(1)}`);
+      });
+    });
+  });
+
+  // Provider change updates models
+  providerSelect.addEventListener('change', () => {
+    updateModelOptions(providerSelect.value, modelSelect);
+  });
+
+  // Toggle API Key visibility
+  apiKeyToggle.addEventListener('click', () => {
+    if (apiKeyInput.type === 'password') {
+      apiKeyInput.type = 'text';
+      apiKeyToggle.textContent = '🙈';
+    } else {
+      apiKeyInput.type = 'password';
+      apiKeyToggle.textContent = '👁️';
+    }
+  });
+
+  // Connection Test
+  testBtn.addEventListener('click', async () => {
+    const provider = providerSelect.value;
+    const apiKey = apiKeyInput.value.trim();
+    const model = modelSelect.value;
+
+    if (!apiKey) {
+      testResult.textContent = 'Lütfen API anahtarı girin';
+      testResult.style.color = 'var(--orange-text)';
+      return;
+    }
+
+    testBtn.disabled = true;
+    testResult.textContent = 'Test ediliyor...';
+    testResult.style.color = 'var(--text-500)';
+
+    try {
+      if (db.ai && typeof db.ai.testConnection === 'function') {
+        const result = await db.ai.testConnection(provider, apiKey, model);
+        if (result.success) {
+          testResult.textContent = '✓ Bağlantı başarılı!';
+          testResult.style.color = 'var(--green-text)';
+        } else {
+          testResult.textContent = `✗ Başarısız: ${result.message || 'Hata oluştu'}`;
+          testResult.style.color = 'var(--orange-text)';
+        }
+      } else {
+        testResult.textContent = '✗ Hata: AI IPC servisi hazır değil';
+        testResult.style.color = 'var(--orange-text)';
+      }
+    } catch (err) {
+      testResult.textContent = `✗ Test hatası: ${err.message || err}`;
+      testResult.style.color = 'var(--orange-text)';
+    } finally {
+      testBtn.disabled = false;
+    }
   });
 
   // Add alias
@@ -1981,9 +2114,17 @@ function initSettingsModal() {
       // Save profile
       userProfile.firstName = firstName;
       userProfile.lastName = lastName;
+
+      const aiProvider = providerSelect.value;
+      const aiModel = modelSelect.value;
+      const aiApiKey = apiKeyInput.value.trim();
+
       await db.settings.setMultiple({
         'user.firstName': firstName,
         'user.lastName': lastName,
+        'ai_provider': aiProvider,
+        'ai_model': aiModel,
+        'ai_api_key': aiApiKey
       });
 
       // Save aliases — clean empty entries
