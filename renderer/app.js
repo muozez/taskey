@@ -1885,7 +1885,35 @@ function showOnboarding() {
 
 let settingsAliasesTemp = {};
 
-function openSettingsModal() {
+const AI_MODELS = {
+  gemini: [
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' }
+  ],
+  openai: [
+    { value: 'gpt-4o', label: 'GPT-4o' },
+    { value: 'gpt-4o-mini', label: 'GPT-4o-mini' },
+    { value: 'gpt-4-turbo', label: 'GPT-4-turbo' }
+  ],
+  anthropic: [
+    { value: 'claude-opus-4-5', label: 'Claude 4.5 Opus' },
+    { value: 'claude-sonnet-4-5', label: 'Claude 4.5 Sonnet' },
+    { value: 'claude-haiku-4-5', label: 'Claude 4.5 Haiku' }
+  ]
+};
+
+function updateModelOptions(provider, selectEl) {
+  selectEl.innerHTML = '';
+  const models = AI_MODELS[provider] || [];
+  models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.value;
+    opt.textContent = m.label;
+    selectEl.appendChild(opt);
+  });
+}
+
+async function openSettingsModal() {
   const modal = document.getElementById('settingsModal');
   modal.classList.add('open');
 
@@ -1893,6 +1921,37 @@ function openSettingsModal() {
   document.getElementById('settingsLastName').value = userProfile.lastName;
   settingsAliasesTemp = { ...commandAliases };
   renderAliasListInSettings();
+
+  // Reset tab to Genel when opening
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === 'general');
+  });
+  document.querySelectorAll('.settings-tab-content').forEach(content => {
+    content.classList.toggle('active', content.id === 'settingsTabGeneral');
+  });
+
+  // Load AI settings
+  try {
+    const settings = await db.settings.getAll();
+    const provider = settings['ai_provider'] || 'gemini';
+    const model = settings['ai_model'] || 'gemini-2.0-flash';
+    const apiKey = settings['ai_api_key'] || '';
+
+    const providerSelect = document.getElementById('settingsAiProvider');
+    const modelSelect = document.getElementById('settingsAiModel');
+    const apiKeyInput = document.getElementById('settingsAiApiKey');
+
+    providerSelect.value = provider;
+    updateModelOptions(provider, modelSelect);
+    modelSelect.value = model;
+    apiKeyInput.value = apiKey;
+    apiKeyInput.type = 'password';
+
+    document.getElementById('settingsAiTestResult').textContent = '';
+    document.getElementById('settingsAiTestResult').className = '';
+  } catch (err) {
+    console.error('[Settings UI] Failed to load AI settings:', err);
+  }
 }
 
 function closeSettingsModal() {
@@ -1933,6 +1992,13 @@ function initSettingsModal() {
   const addAliasBtn = document.getElementById('addAliasBtn');
   const settingsModal = document.getElementById('settingsModal');
 
+  const providerSelect = document.getElementById('settingsAiProvider');
+  const modelSelect = document.getElementById('settingsAiModel');
+  const apiKeyInput = document.getElementById('settingsAiApiKey');
+  const apiKeyToggle = document.getElementById('settingsAiToggleApiKey');
+  const testBtn = document.getElementById('settingsAiTestBtn');
+  const testResult = document.getElementById('settingsAiTestResult');
+
   // Open via sidebar settings button
   document.querySelector('.user-settings').addEventListener('click', openSettingsModal);
 
@@ -1945,6 +2011,73 @@ function initSettingsModal() {
   settingsModal.addEventListener('click', (e) => {
     if (e.target === settingsModal && settingsMouseDownTarget === settingsModal) closeSettingsModal();
     settingsMouseDownTarget = null;
+  });
+
+  // Tab switching logic
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.dataset.tab;
+      document.querySelectorAll('.settings-tab-btn').forEach(b => {
+        b.classList.toggle('active', b === btn);
+      });
+      document.querySelectorAll('.settings-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `settingsTab${targetTab.charAt(0).toUpperCase() + targetTab.slice(1)}`);
+      });
+    });
+  });
+
+  // Provider change updates models
+  providerSelect.addEventListener('change', () => {
+    updateModelOptions(providerSelect.value, modelSelect);
+  });
+
+  // Toggle API Key visibility
+  apiKeyToggle.addEventListener('click', () => {
+    if (apiKeyInput.type === 'password') {
+      apiKeyInput.type = 'text';
+      apiKeyToggle.textContent = '🙈';
+    } else {
+      apiKeyInput.type = 'password';
+      apiKeyToggle.textContent = '👁️';
+    }
+  });
+
+  // Connection Test
+  testBtn.addEventListener('click', async () => {
+    const provider = providerSelect.value;
+    const apiKey = apiKeyInput.value.trim();
+    const model = modelSelect.value;
+
+    if (!apiKey) {
+      testResult.textContent = 'Lütfen API anahtarı girin';
+      testResult.style.color = 'var(--orange-text)';
+      return;
+    }
+
+    testBtn.disabled = true;
+    testResult.textContent = 'Test ediliyor...';
+    testResult.style.color = 'var(--text-500)';
+
+    try {
+      if (db.ai && typeof db.ai.testConnection === 'function') {
+        const result = await db.ai.testConnection(provider, apiKey, model);
+        if (result.success) {
+          testResult.textContent = '✓ Bağlantı başarılı!';
+          testResult.style.color = 'var(--green-text)';
+        } else {
+          testResult.textContent = `✗ Başarısız: ${result.message || 'Hata oluştu'}`;
+          testResult.style.color = 'var(--orange-text)';
+        }
+      } else {
+        testResult.textContent = '✗ Hata: AI IPC servisi hazır değil';
+        testResult.style.color = 'var(--orange-text)';
+      }
+    } catch (err) {
+      testResult.textContent = `✗ Test hatası: ${err.message || err}`;
+      testResult.style.color = 'var(--orange-text)';
+    } finally {
+      testBtn.disabled = false;
+    }
   });
 
   // Add alias
@@ -1981,9 +2114,17 @@ function initSettingsModal() {
       // Save profile
       userProfile.firstName = firstName;
       userProfile.lastName = lastName;
+
+      const aiProvider = providerSelect.value;
+      const aiModel = modelSelect.value;
+      const aiApiKey = apiKeyInput.value.trim();
+
       await db.settings.setMultiple({
         'user.firstName': firstName,
         'user.lastName': lastName,
+        'ai_provider': aiProvider,
+        'ai_model': aiModel,
+        'ai_api_key': aiApiKey
       });
 
       // Save aliases — clean empty entries
@@ -2012,6 +2153,249 @@ function initSettingsModal() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && settingsModal.classList.contains('open')) {
       closeSettingsModal();
+    }
+  });
+}
+
+// ── AI Decomposition Modal ────────────────────────────
+let tempGeneratedTasks = [];
+
+function formatDateIso(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function openAiDecomposeModal() {
+  const modal = document.getElementById('aiDecomposeModal');
+  modal.classList.add('open');
+
+  // Set default dates
+  const today = new Date();
+  const nextWeek = new Date();
+  nextWeek.setDate(today.getDate() + 7);
+
+  document.getElementById('aiDecomposeStart').value = formatDateIso(today);
+  document.getElementById('aiDecomposeEnd').value = formatDateIso(nextWeek);
+
+  // Reset inputs
+  document.getElementById('aiDecomposeScope').value = '';
+  document.getElementById('aiDecomposeOutcome').value = '';
+
+  // Show state 1, hide others
+  document.getElementById('aiDecomposeStateInput').style.display = '';
+  document.getElementById('aiDecomposeStateLoading').style.display = 'none';
+  document.getElementById('aiDecomposeStatePreview').style.display = 'none';
+
+  // Toggle footer buttons
+  document.getElementById('aiDecomposeSubmitBtn').style.display = '';
+  document.getElementById('aiDecomposeAddBtn').style.display = 'none';
+}
+
+function closeAiDecomposeModal() {
+  document.getElementById('aiDecomposeModal').classList.remove('open');
+}
+
+function renderAiDecomposePreview(result) {
+  tempGeneratedTasks = result.tasks || [];
+  
+  const summaryEl = document.getElementById('aiDecomposeSummary');
+  summaryEl.textContent = result.summary || 'Proje başarıyla planlandı. Aşağıdaki görevleri panonuza ekleyebilirsiniz.';
+
+  const listEl = document.getElementById('aiDecomposeList');
+  listEl.innerHTML = '';
+
+  if (tempGeneratedTasks.length === 0) {
+    listEl.innerHTML = '<div class="dash-upcoming-empty">Görev oluşturulamadı.</div>';
+  } else {
+    tempGeneratedTasks.forEach((task, index) => {
+      const item = document.createElement('div');
+      item.className = 'ai-task-item';
+      
+      const priorityLabel = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+      
+      item.innerHTML = `
+        <input type="checkbox" class="ai-task-item-checkbox" data-index="${index}" checked />
+        <div class="ai-task-item-content">
+          <div class="ai-task-item-header">
+            <span class="ai-task-item-title">${escapeHtml(task.title)}</span>
+            <span class="priority-badge ${task.priority.toLowerCase()}">${priorityLabel}</span>
+          </div>
+          <div class="ai-task-item-desc">${escapeHtml(task.description || '')}</div>
+          <div class="ai-task-item-meta">
+            <span>Süre: ${task.estimatedDays} gün</span>
+            <span>Başlangıç: ${task.startDate}</span>
+            <span>Bitiş: ${task.dueDate}</span>
+            <span>Kolon: ${escapeHtml(task.status)}</span>
+            ${task.tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join('')}
+          </div>
+        </div>
+      `;
+      listEl.appendChild(item);
+    });
+  }
+
+  // Switch to Preview state
+  document.getElementById('aiDecomposeStateLoading').style.display = 'none';
+  document.getElementById('aiDecomposeStatePreview').style.display = '';
+  
+  // Toggle footer buttons
+  document.getElementById('aiDecomposeSubmitBtn').style.display = 'none';
+  document.getElementById('aiDecomposeAddBtn').style.display = '';
+}
+
+function initAiDecomposeModal() {
+  const modal = document.getElementById('aiDecomposeModal');
+  const openBtn = document.getElementById('btnOpenAiDecompose');
+  const closeBtn = document.getElementById('aiDecomposeClose');
+  const cancelBtn = document.getElementById('aiDecomposeCancel');
+  const submitBtn = document.getElementById('aiDecomposeSubmitBtn');
+  const addBtn = document.getElementById('aiDecomposeAddBtn');
+
+  openBtn.addEventListener('click', openAiDecomposeModal);
+  closeBtn.addEventListener('click', closeAiDecomposeModal);
+  cancelBtn.addEventListener('click', closeAiDecomposeModal);
+
+  // Overlay click to close
+  let mouseDownTarget = null;
+  modal.addEventListener('mousedown', (e) => { mouseDownTarget = e.target; });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal && mouseDownTarget === modal) closeAiDecomposeModal();
+    mouseDownTarget = null;
+  });
+
+  // Submit/Plan
+  submitBtn.addEventListener('click', async () => {
+    const scope = document.getElementById('aiDecomposeScope').value.trim();
+    const outcome = document.getElementById('aiDecomposeOutcome').value.trim();
+    const start = document.getElementById('aiDecomposeStart').value;
+    const end = document.getElementById('aiDecomposeEnd').value;
+
+    if (!scope) {
+      document.getElementById('aiDecomposeScope').classList.add('modal-input-error');
+      setTimeout(() => document.getElementById('aiDecomposeScope').classList.remove('modal-input-error'), 800);
+      return;
+    }
+
+    if (!outcome) {
+      document.getElementById('aiDecomposeOutcome').classList.add('modal-input-error');
+      setTimeout(() => document.getElementById('aiDecomposeOutcome').classList.remove('modal-input-error'), 800);
+      return;
+    }
+
+    if (new Date(start) > new Date(end)) {
+      showToast('Başlangıç tarihi bitiş tarihinden sonra olamaz.', 'error');
+      return;
+    }
+
+    // Load settings to check AI config
+    const settings = await db.settings.getAll();
+    const provider = settings['ai_provider'];
+    const model = settings['ai_model'];
+    const apiKey = settings['ai_api_key'];
+
+    if (!provider || !apiKey) {
+      showToast('Lütfen önce Ayarlar > AI Asistan sekmesinden AI sağlayıcınızı ve API anahtarınızı yapılandırın.', 'error');
+      closeAiDecomposeModal();
+      openSettingsModal();
+      // Switch settings tab to AI
+      setTimeout(() => {
+        const aiTabBtn = document.querySelector('.settings-tab-btn[data-tab="ai"]');
+        if (aiTabBtn) aiTabBtn.click();
+      }, 300);
+      return;
+    }
+
+    // Switch to loading state
+    document.getElementById('aiDecomposeStateInput').style.display = 'none';
+    document.getElementById('aiDecomposeStateLoading').style.display = 'flex';
+    submitBtn.style.display = 'none';
+
+    try {
+      const payload = {
+        projectId: currentProject,
+        provider,
+        model,
+        apiKey,
+        taskScope: scope,
+        expectedOutcome: outcome,
+        startDate: start,
+        endDate: end
+      };
+
+      const result = await db.ai.generateTasks(payload);
+      renderAiDecomposePreview(result);
+    } catch (err) {
+      console.error('[AI Plan] Decomposition error:', err);
+      showToast(`Plan oluşturulamadı: ${err.message || err}`, 'error');
+      // Revert to input state
+      document.getElementById('aiDecomposeStateInput').style.display = '';
+      document.getElementById('aiDecomposeStateLoading').style.display = 'none';
+      submitBtn.style.display = '';
+    }
+  });
+
+  // Transfer/Add Tasks
+  addBtn.addEventListener('click', async () => {
+    const checkedBoxes = document.querySelectorAll('.ai-task-item-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+      showToast('Lütfen eklemek için en az bir görev seçin.', 'error');
+      return;
+    }
+
+    addBtn.disabled = true;
+    addBtn.textContent = 'Ekleniyor...';
+
+    try {
+      const project = projectData[currentProject];
+      const validStatuses = new Set(['backlog', ...project.columns.map(c => c.id)]);
+
+      for (const box of checkedBoxes) {
+        const index = parseInt(box.dataset.index);
+        const task = tempGeneratedTasks[index];
+        if (!task) continue;
+
+        const targetStatus = validStatuses.has(task.status) ? task.status : 'backlog';
+
+        const taskData = {
+          id: generateId(),
+          title: task.title,
+          desc: task.description,
+          priority: task.priority,
+          avatar: '',
+          avatarColor: 'gray',
+          dueDate: task.dueDate,
+          dueTime: '',
+          duration: `${task.estimatedDays}d`,
+          progress: 0,
+          tags: task.tags,
+          checklist: [],
+          createdAt: new Date().toISOString()
+        };
+
+        await db.tasks.create(currentProject, targetStatus, taskData);
+      }
+
+      await refreshProjectData(currentProject);
+      renderBacklog();
+      renderKanban();
+
+      closeAiDecomposeModal();
+      showToast(`${checkedBoxes.length} görev başarıyla eklendi!`, 'success');
+    } catch (err) {
+      console.error('[AI Plan] Failed to add tasks:', err);
+      showToast(`Görevler eklenirken hata oluştu: ${err.message || err}`, 'error');
+    } finally {
+      addBtn.disabled = false;
+      addBtn.textContent = 'Görevleri Panoya Aktar';
+    }
+  });
+
+  // Escape to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) {
+      closeAiDecomposeModal();
     }
   });
 }
@@ -3090,6 +3474,7 @@ async function initApp() {
     initProjectRename();
     initDashboard();
     initSettingsModal();
+    initAiDecomposeModal();
     initSyncModal();
     updateSidebarUser();
 

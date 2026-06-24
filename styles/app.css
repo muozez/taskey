@@ -2623,6 +2623,68 @@ kbd {
   background: #0d35a8;
 }
 
+/* Settings Tabs */
+.settings-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+}
+
+.settings-tab-btn {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-500);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.settings-tab-btn:hover {
+  color: var(--text-800);
+  background: var(--slate-50);
+}
+
+.settings-tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.settings-tab-content {
+  display: none;
+}
+
+.settings-tab-content.active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Password Toggle Icon Button */
+.btn-toggle-password {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-400);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: var(--radius);
+  transition: color 0.15s, background-color 0.15s;
+}
+.btn-toggle-password:hover {
+  color: var(--text-700);
+  background-color: var(--slate-100);
+}
+
 /* ── Toast Notifications ─────────────────────────────── */
 
 .toast-notification {
@@ -3065,5 +3127,111 @@ kbd {
 
 .sync-conflict-btn-reject:hover {
   background: var(--orange-bg);
+}
+
+/* ── AI Task Decomposition ───────────────────────────── */
+.btn-ai-decompose {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--primary) 0%, #6366f1 100%);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-ai-decompose:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+  background: linear-gradient(135deg, #0d35a8 0%, #4f46e5 100%);
+}
+
+.btn-ai-decompose:active {
+  transform: translateY(0);
+}
+
+.ai-loader-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--slate-100);
+  border-top-color: var(--primary);
+  border-bottom-color: #6366f1;
+  border-radius: 50%;
+  animation: ai-spin 1s linear infinite;
+}
+
+@keyframes ai-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.ai-task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.ai-task-item:hover {
+  background: var(--slate-50);
+  border-color: var(--primary-light);
+}
+
+.ai-task-item-checkbox {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.ai-task-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-task-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-task-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-800);
+}
+
+.ai-task-item-desc {
+  font-size: 12px;
+  color: var(--text-500);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.ai-task-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-400);
+  font-weight: 500;
+}
+
+.ai-task-item-meta span {
+  background: var(--slate-100);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
 }
 
