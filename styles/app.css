@@ -3235,3 +3235,30 @@ kbd {
   border-radius: var(--radius-sm);
 }
 
+.ai-task-decompose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--slate-100);
+  border: 1px solid var(--slate-200);
+  color: var(--text-600);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ai-task-decompose-btn:hover {
+  background: linear-gradient(135deg, var(--primary-light) 0%, #a5b4fc 100%);
+  border-color: var(--primary-light);
+  color: var(--primary);
+  transform: translateY(-0.5px);
+}
+
+.ai-task-decompose-btn:active {
+  transform: translateY(0);
+}
+
+

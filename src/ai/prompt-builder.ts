@@ -3,12 +3,26 @@ interface ColumnDef {
   label: string;
 }
 
+interface TaskDef {
+  title: string;
+  description: string;
+  status: string;
+}
+
 interface PromptPayload {
   columns: ColumnDef[];
   startDate: string;
   endDate: string;
   taskScope: string;
   expectedOutcome: string;
+  existingTasks?: TaskDef[];
+}
+
+export interface SingleTaskPayload {
+  title: string;
+  description: string;
+  startDate: string;
+  dueDate: string;
 }
 
 /**
@@ -16,11 +30,17 @@ interface PromptPayload {
  */
 export function buildDecompositionPrompt(payload: PromptPayload): string {
   const columnsJson = JSON.stringify(payload.columns, null, 2);
+  const existingTasksStr = payload.existingTasks && payload.existingTasks.length > 0
+    ? JSON.stringify(payload.existingTasks.map(t => ({ title: t.title, description: t.description, status: t.status })), null, 2)
+    : "Hiç yok.";
 
   return `Sen deneyimli bir proje yöneticisi ve çevik (agile) süreç planlama uzmanısın. Kullanıcının verdiği proje/görev tanımını alacaksın ve bunu somut, uygulanabilir, bağımsız alt görevlere böleceksin.
 
 Mevcut kanban sütunları (status alanı için bu ID'lerden birini seçmelisin):
 ${columnsJson}
+
+Projedeki Mevcut Görevler (Backlog ve Diğer Kolonlar):
+${existingTasksStr}
 
 Kullanıcı Girdisi:
 - Başlangıç Tarihi: ${payload.startDate}
@@ -34,7 +54,11 @@ Kurallar ve Yönergeler:
 3. Her görevin "status" alanı, yukarıda listelenen mevcut kanban sütunlarının "id" değerlerinden biri olmalıdır. Başlangıç görevleri için genellikle backlog veya ilk süreç sütununu seç.
 4. "priority" alanı sadece 'low', 'medium', 'high' veya 'urgent' değerlerini alabilir.
 5. Görevlerin "tags" listesi ilgili etiketleri içermelidir (örneğin: 'frontend', 'backend', 'design', 'testing').
-6. Çıktı SADECE geçerli bir JSON objesi olmalıdır. Kesinlikle markdown kod blokları (\`\`\`) dışında veya içinde başka hiçbir açıklama, giriş veya sonuç metni ekleme.
+6. Projedeki mevcut görevleri ve yeni ekleyeceğiniz planlama kapsamını analiz ederek, bir "logicAnalysis" (Mantık Analizi) hazırlayın:
+   - Yeni görevlerin mevcut görevlerle olan ilişkileri, çakışmaları veya bağımlılıkları.
+   - İş akışını hızlandıracak kritik yollar (örneğin: "X ve Y görevleri bağıntılı ancak önce Z göreviyle başlanırsa bu iki görev daha hızlı bitirilir" gibi pratik öneriler).
+   - Mantıksal tavsiyeler (bu olur/bu olmaz, şu sırayla yapılmalı).
+7. Çıktı SADECE geçerli bir JSON objesi olmalıdır. Kesinlikle markdown kod blokları (\`\`\`) dışında veya içinde başka hiçbir açıklama, giriş veya sonuç metni ekleme.
 
 Çıktı Şeması:
 {
@@ -50,8 +74,44 @@ Kurallar ve Yönergeler:
       "status": "sutun-id"
     }
   ],
-  "summary": "Projenin genel özeti ve planlama yaklaşımı"
+  "summary": "Projenin genel özeti ve planlama yaklaşımı",
+  "logicAnalysis": "Mevcut görevlerin ve yeni görevlerin mantıksal analizi, bağımlılık optimizasyonu ve kritik iş sırası önerileri."
 }
 
 Lütfen bu kurallara harfiyen uyarak SADECE yukarıdaki şemaya uygun JSON üret.`;
+}
+
+/**
+ * Builds the prompt for breaking a single task down into smaller micro-tasks.
+ */
+export function buildSingleTaskDecompositionPrompt(payload: SingleTaskPayload): string {
+  return `Sen deneyimli bir proje yöneticisisin. Sana verilen aşağıdaki büyük görevi (epic/task), daha küçük, 3-5 story point (veya 1-2 gün sürecek) mikro görevlere (alt görevlere) bölmen gerekiyor:
+
+Büyük Görev:
+- Başlık: ${payload.title}
+- Açıklama: ${payload.description}
+- Başlangıç Tarihi: ${payload.startDate}
+- Bitiş Tarihi: ${payload.dueDate}
+
+Kurallar:
+1. Büyük görevi 3 ila 5 adet daha küçük, somut ve bağımsız mikro göreve böl.
+2. Mikro görevlerin "startDate" ve "dueDate" tarihleri mutlaka ana görevin tarih aralığı (${payload.startDate} ile ${payload.dueDate}) içinde olmalıdır.
+3. Her mikro görevin "priority", "status", "estimatedDays" ve "tags" alanları olmalıdır. Ana görevin status ve tags değerlerini devralabilir veya güncelleyebilirler.
+4. Çıktı SADECE geçerli bir JSON objesi olmalıdır. Kesinlikle markdown kod blokları (\`\`\`) dışında veya içinde başka hiçbir açıklama ekleme.
+
+Çıktı Şeması:
+{
+  "tasks": [
+    {
+      "title": "Mikro Görev Başlığı",
+      "description": "Detaylı açıklama",
+      "priority": "low" | "medium" | "high" | "urgent",
+      "estimatedDays": 1,
+      "startDate": "YYYY-MM-DD",
+      "dueDate": "YYYY-MM-DD",
+      "tags": ["tag1"],
+      "status": "sutun-id"
+    }
+  ]
+}`;
 }

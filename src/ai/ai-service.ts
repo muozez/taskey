@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { buildSingleTaskDecompositionPrompt } from "./prompt-builder";
 
 export interface GeneratedTask {
   title: string;
@@ -16,6 +17,7 @@ export interface GeneratedTask {
 export interface AiTaskResult {
   tasks: GeneratedTask[];
   summary: string;
+  logicAnalysis?: string;
 }
 
 export interface AiGeneratePayload {
@@ -158,7 +160,8 @@ export async function generateTasks(payload: AiGeneratePayload, prompt: string):
 
       return {
         tasks,
-        summary: String(parsed.summary || "")
+        summary: String(parsed.summary || ""),
+        logicAnalysis: parsed.logicAnalysis ? String(parsed.logicAnalysis) : undefined
       };
     } catch (err: any) {
       if (attempt === maxRetries) {
@@ -212,4 +215,80 @@ export async function testConnection(
   } catch (err: any) {
     return { success: false, message: err.message || String(err) };
   }
+}
+
+export interface DecomposeSingleTaskPayload {
+  provider: "gemini" | "openai" | "anthropic";
+  apiKey: string;
+  model: string;
+  title: string;
+  description: string;
+  startDate: string;
+  dueDate: string;
+  status: string;
+  tags: string[];
+}
+
+export async function decomposeSingleTask(payload: DecomposeSingleTaskPayload): Promise<GeneratedTask[]> {
+  const prompt = buildSingleTaskDecompositionPrompt({
+    title: payload.title,
+    description: payload.description,
+    startDate: payload.startDate,
+    dueDate: payload.dueDate
+  });
+
+  const rawPayload: AiGeneratePayload = {
+    projectId: '',
+    provider: payload.provider,
+    apiKey: payload.apiKey,
+    model: payload.model,
+    taskScope: payload.description,
+    expectedOutcome: '',
+    startDate: payload.startDate,
+    endDate: payload.dueDate
+  };
+
+  let currentPrompt = prompt;
+  let attempt = 0;
+  const maxRetries = 2;
+  const delay = 1000;
+
+  while (attempt <= maxRetries) {
+    try {
+      const rawResponse = await performRequest(rawPayload, currentPrompt);
+      const parsed = extractJson(rawResponse);
+
+      if (!parsed || !Array.isArray(parsed.tasks)) {
+        throw new Error("AI yanıtı beklenen şemaya uymuyor (tasks dizisi bulunamadı)");
+      }
+
+      return parsed.tasks.map((t: any) => {
+        const priority = (t.priority || "medium").toLowerCase();
+        const validPriority = ["low", "medium", "high", "urgent"].includes(priority)
+          ? (priority as "low" | "medium" | "high" | "urgent")
+          : "medium";
+
+        return {
+          title: String(t.title || "İsimsiz Mikro Görev").trim(),
+          description: String(t.description || "").trim(),
+          priority: validPriority,
+          estimatedDays: Number(t.estimatedDays) || 1,
+          startDate: String(t.startDate || payload.startDate).trim(),
+          dueDate: String(t.dueDate || payload.dueDate).trim(),
+          tags: Array.isArray(t.tags) ? t.tags.map(String) : payload.tags,
+          status: String(t.status || payload.status).trim()
+        };
+      });
+    } catch (err: any) {
+      if (attempt === maxRetries) {
+        throw err;
+      }
+      attempt++;
+      if (err.message && (err.message.includes("JSON") || err.message.includes("şemaya uymuyor"))) {
+        currentPrompt = `${prompt}\n\nÖNEMLİ UYARI: Önceki denemede geçersiz JSON ürettin veya JSON yapısı şemaya uymadı. Lütfen SADECE geçerli ve düzgün biçimlendirilmiş bir JSON objesi döndürdüğünden emin ol. Hata detayı: ${err.message}`;
+      }
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
+    }
+  }
+  throw new Error("Retry failed");
 }

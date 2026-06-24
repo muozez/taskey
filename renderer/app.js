@@ -1004,7 +1004,49 @@ let lastQuickSettings = {
   duration: '',
 };
 
-// ── Command Parser ────────────────────────────────────
+function parseArgs(argsStr) {
+  const args = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < argsStr.length; i++) {
+    const char = argsStr[i];
+    if (char === '"' || char === "'") {
+      inQuotes = !inQuotes;
+    } else if (char === ' ' && !inQuotes) {
+      if (current) {
+        args.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+  if (current) {
+    args.push(current);
+  }
+  return args;
+}
+
+function parseDateOffset(offsetStr) {
+  if (!offsetStr) return new Date();
+  const match = offsetStr.match(/^(\d+)(d|w|mo|y)$/i);
+  if (!match) return new Date();
+
+  const amount = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+
+  const d = new Date();
+  if (unit === 'd') {
+    d.setDate(d.getDate() + amount);
+  } else if (unit === 'w') {
+    d.setDate(d.getDate() + amount * 7);
+  } else if (unit === 'mo') {
+    d.setMonth(d.getMonth() + amount);
+  } else if (unit === 'y') {
+    d.setFullYear(d.getFullYear() + amount);
+  }
+  return d;
+}
 
 /**
  * All standalone commands (entered alone, no title):
@@ -1087,10 +1129,19 @@ function parseCommandInput(raw) {
     return result;
   }
 
-  // :ai new [PROJECT_NAME]
+  // :ai new [PROJECT_NAME] [START_OFFSET] [END_OFFSET] [SCOPE] [OUTCOME]
   const aiNewMatch = raw.match(/^:ai\s+new(?:\s+(.+))?$/i);
   if (aiNewMatch) {
-    result.command = { type: 'ai_new', projectName: aiNewMatch[1] ? aiNewMatch[1].trim() : '' };
+    const rawArgs = aiNewMatch[1] ? aiNewMatch[1].trim() : '';
+    const args = parseArgs(rawArgs);
+    result.command = {
+      type: 'ai_new',
+      projectName: args[0] || '',
+      startOffset: args[1] || '',
+      endOffset: args[2] || '',
+      scope: args[3] || '',
+      outcome: args[4] || ''
+    };
     return result;
   }
 
@@ -1299,8 +1350,8 @@ async function cmdCreateProject(name, color) {
   renderProject(slug);
 }
 
-/** :ai new PROJECT_NAME — open AI plan modal for project */
-async function cmdAiNew(projectName) {
+/** :ai new PROJECT_NAME [START_OFFSET] [END_OFFSET] [SCOPE] [OUTCOME] — open AI plan modal for project */
+async function cmdAiNew(projectName, startOffset, endOffset, scope, outcome) {
   if (!projectName) {
     if (!currentProject) {
       showToast('Lütfen önce bir proje seçin', 'error');
@@ -1319,11 +1370,41 @@ async function cmdAiNew(projectName) {
     }
   }
 
-  if (targetSlug) {
-    renderProject(targetSlug);
+  if (!targetSlug) {
+    targetSlug = slugify(projectName);
+    let counter = 1;
+    while (projectData[targetSlug]) {
+      targetSlug = slugify(projectName) + '-' + counter++;
+    }
+    const defaultCols = [
+      { id: 'in-progress', label: 'In Progress' },
+      { id: 'done', label: 'Done', isDone: true }
+    ];
+    await db.projects.create(targetSlug, projectName, 'orange', defaultCols);
+    await refreshAllProjects();
+    renderSidebarProjects();
+  }
+
+  renderProject(targetSlug);
+
+  if (startOffset && endOffset && scope && outcome) {
     openAiDecomposeModal();
+
+    const startDate = parseDateOffset(startOffset);
+    const endDate = parseDateOffset(endOffset);
+
+    document.getElementById('aiDecomposeStart').value = formatDateIso(startDate);
+    document.getElementById('aiDecomposeEnd').value = formatDateIso(endDate);
+    document.getElementById('aiDecomposeScope').value = scope;
+    document.getElementById('aiDecomposeOutcome').value = outcome;
+
+    // Submit plan programmatically
+    const submitBtn = document.getElementById('aiDecomposeSubmitBtn');
+    if (submitBtn) {
+      submitBtn.click();
+    }
   } else {
-    showToast(`"${projectName}" adında bir proje bulunamadı`, 'error');
+    openAiDecomposeModal();
   }
 }
 
@@ -1340,7 +1421,7 @@ async function executeCommand(parsed) {
       case 'col':     await cmdCreateColumn(cmd.name); showToast(`"${cmd.name}" kolonu oluşturuldu`, 'success'); return;
       case 'delcol':  await cmdDeleteColumn(cmd.name); showToast('Kolon silindi', 'success'); return;
       case 'proj':    await cmdCreateProject(cmd.name, cmd.color); showToast(`"${cmd.name}" projesi oluşturuldu`, 'success'); return;
-      case 'ai_new':  await cmdAiNew(cmd.projectName); return;
+      case 'ai_new':  await cmdAiNew(cmd.projectName, cmd.startOffset, cmd.endOffset, cmd.scope, cmd.outcome); return;
       case 'clear':
         lastQuickSettings = { priority: 'medium', avatarColor: 'blue', tags: [], duration: '' };
         showToast('Ayarlar sıfırlandı', 'info');
@@ -2258,6 +2339,30 @@ function renderAiDecomposePreview(result) {
   const summaryEl = document.getElementById('aiDecomposeSummary');
   summaryEl.textContent = result.summary || 'Proje başarıyla planlandı. Aşağıdaki görevleri panonuza ekleyebilirsiniz.';
 
+  const logicTitleEl = document.getElementById('aiDecomposeLogicTitle');
+  const logicAnalysisEl = document.getElementById('aiDecomposeLogicAnalysis');
+  
+  if (result.logicAnalysis) {
+    logicTitleEl.style.display = '';
+    logicAnalysisEl.style.display = '';
+    logicAnalysisEl.textContent = result.logicAnalysis;
+  } else {
+    logicTitleEl.style.display = 'none';
+    logicAnalysisEl.style.display = 'none';
+  }
+
+  renderAiDecomposeListOnly();
+
+  // Switch to Preview state
+  document.getElementById('aiDecomposeStateLoading').style.display = 'none';
+  document.getElementById('aiDecomposeStatePreview').style.display = '';
+  
+  // Toggle footer buttons
+  document.getElementById('aiDecomposeSubmitBtn').style.display = 'none';
+  document.getElementById('aiDecomposeAddBtn').style.display = '';
+}
+
+function renderAiDecomposeListOnly() {
   const listEl = document.getElementById('aiDecomposeList');
   listEl.innerHTML = '';
 
@@ -2275,7 +2380,12 @@ function renderAiDecomposePreview(result) {
         <div class="ai-task-item-content">
           <div class="ai-task-item-header">
             <span class="ai-task-item-title">${escapeHtml(task.title)}</span>
-            <span class="priority-badge ${task.priority.toLowerCase()}">${priorityLabel}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="priority-badge ${task.priority.toLowerCase()}">${priorityLabel}</span>
+              <button class="ai-task-decompose-btn" data-index="${index}" title="Bu görevi mikro görevlere böl">
+                ⚡ Böl
+              </button>
+            </div>
           </div>
           <div class="ai-task-item-desc">${escapeHtml(task.description || '')}</div>
           <div class="ai-task-item-meta">
@@ -2289,15 +2399,65 @@ function renderAiDecomposePreview(result) {
       `;
       listEl.appendChild(item);
     });
-  }
 
-  // Switch to Preview state
-  document.getElementById('aiDecomposeStateLoading').style.display = 'none';
-  document.getElementById('aiDecomposeStatePreview').style.display = '';
-  
-  // Toggle footer buttons
-  document.getElementById('aiDecomposeSubmitBtn').style.display = 'none';
-  document.getElementById('aiDecomposeAddBtn').style.display = '';
+    // Add event listeners to the "Böl" buttons
+    listEl.querySelectorAll('.ai-task-decompose-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const index = parseInt(btn.dataset.index, 10);
+        await decomposeSingleTaskUi(index, btn);
+      });
+    });
+  }
+}
+
+async function decomposeSingleTaskUi(index, btn) {
+  const task = tempGeneratedTasks[index];
+  if (!task) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Bölünüyor...';
+
+  try {
+    const settings = await db.settings.getAll();
+    const provider = settings['ai_provider'];
+    const model = settings['ai_model'];
+    const apiKey = settings['ai_api_key'];
+
+    if (!provider || !apiKey) {
+      showToast('Lütfen önce Ayarlar > AI Asistan sekmesinden AI sağlayıcınızı ve API anahtarınızı yapılandırın.', 'error');
+      btn.disabled = false;
+      btn.textContent = '⚡ Böl';
+      return;
+    }
+
+    const microTasks = await db.ai.decomposeSingleTask({
+      provider,
+      model,
+      apiKey,
+      title: task.title,
+      description: task.description,
+      startDate: task.startDate,
+      dueDate: task.dueDate,
+      status: task.status,
+      tags: task.tags
+    });
+
+    if (microTasks && microTasks.length > 0) {
+      tempGeneratedTasks.splice(index, 1, ...microTasks);
+      renderAiDecomposeListOnly();
+      showToast('Görev başarıyla mikro görevlere bölündü!', 'success');
+    } else {
+      showToast('Mikro görev üretilemedi.', 'error');
+      btn.disabled = false;
+      btn.textContent = '⚡ Böl';
+    }
+  } catch (err) {
+    console.error('[AI Decompose Task] Error:', err);
+    showToast(`Bölme işlemi başarısız: ${err.message || err}`, 'error');
+    btn.disabled = false;
+    btn.textContent = '⚡ Böl';
+  }
 }
 
 function initAiDecomposeModal() {
