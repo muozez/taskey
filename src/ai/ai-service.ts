@@ -123,43 +123,58 @@ async function performRequest(payload: AiGeneratePayload, prompt: string): Promi
   }
 }
 
-/**
- * Generates tasks from a prompt using the selected AI provider.
- * Automatically handles retries and response parsing.
- */
 export async function generateTasks(payload: AiGeneratePayload, prompt: string): Promise<AiTaskResult> {
-  return retryWithBackoff(async () => {
-    const rawResponse = await performRequest(payload, prompt);
-    const parsed = extractJson(rawResponse);
+  let currentPrompt = prompt;
+  let attempt = 0;
+  const maxRetries = 2;
+  const delay = 1000;
 
-    if (!parsed || !Array.isArray(parsed.tasks)) {
-      throw new Error("AI yanıtı beklenen şemaya uymuyor (tasks dizisi bulunamadı)");
-    }
+  while (attempt <= maxRetries) {
+    try {
+      const rawResponse = await performRequest(payload, currentPrompt);
+      const parsed = extractJson(rawResponse);
 
-    // Validate structure and map priority
-    const tasks: GeneratedTask[] = parsed.tasks.map((t: any) => {
-      const priority = (t.priority || "medium").toLowerCase();
-      const validPriority = ["low", "medium", "high", "urgent"].includes(priority)
-        ? (priority as "low" | "medium" | "high" | "urgent")
-        : "medium";
+      if (!parsed || !Array.isArray(parsed.tasks)) {
+        throw new Error("AI yanıtı beklenen şemaya uymuyor (tasks dizisi bulunamadı)");
+      }
+
+      const tasks: GeneratedTask[] = parsed.tasks.map((t: any) => {
+        const priority = (t.priority || "medium").toLowerCase();
+        const validPriority = ["low", "medium", "high", "urgent"].includes(priority)
+          ? (priority as "low" | "medium" | "high" | "urgent")
+          : "medium";
+
+        return {
+          title: String(t.title || "İsimsiz Görev").trim(),
+          description: String(t.description || "").trim(),
+          priority: validPriority,
+          estimatedDays: Number(t.estimatedDays) || 1,
+          startDate: String(t.startDate || payload.startDate).trim(),
+          dueDate: String(t.dueDate || payload.endDate).trim(),
+          tags: Array.isArray(t.tags) ? t.tags.map(String) : [],
+          status: String(t.status || "backlog").trim()
+        };
+      });
 
       return {
-        title: String(t.title || "İsimsiz Görev").trim(),
-        description: String(t.description || "").trim(),
-        priority: validPriority,
-        estimatedDays: Number(t.estimatedDays) || 1,
-        startDate: String(t.startDate || payload.startDate).trim(),
-        dueDate: String(t.dueDate || payload.endDate).trim(),
-        tags: Array.isArray(t.tags) ? t.tags.map(String) : [],
-        status: String(t.status || "backlog").trim()
+        tasks,
+        summary: String(parsed.summary || "")
       };
-    });
+    } catch (err: any) {
+      if (attempt === maxRetries) {
+        throw err;
+      }
+      attempt++;
 
-    return {
-      tasks,
-      summary: String(parsed.summary || "")
-    };
-  });
+      // If it is a JSON or schema validation error, we provide direct feedback to the AI for the retry
+      if (err.message && (err.message.includes("JSON") || err.message.includes("şemaya uymuyor"))) {
+        currentPrompt = `${prompt}\n\nÖNEMLİ UYARI: Önceki denemede geçersiz JSON ürettin veya JSON yapısı şemaya uymadı. Lütfen SADECE geçerli ve düzgün biçimlendirilmiş bir JSON objesi döndürdüğünden emin ol. Hata detayı: ${err.message}`;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
+    }
+  }
+  throw new Error("Retry failed");
 }
 
 /**
