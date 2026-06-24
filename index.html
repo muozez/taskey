@@ -602,37 +602,87 @@
       </button>
     </div>
     <div class="modal-body">
-      <!-- Profile Section -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">Profil</h3>
-        <div class="modal-row">
-          <div class="modal-field">
-            <label class="modal-label">Ad</label>
-            <input class="modal-input" type="text" id="settingsFirstName" placeholder="Adınız..." />
+      <!-- Settings Tabs Header -->
+      <div class="settings-tabs">
+        <button class="settings-tab-btn active" data-tab="general" type="button">⚙️ Genel</button>
+        <button class="settings-tab-btn" data-tab="ai" type="button">🤖 AI Asistan</button>
+      </div>
+
+      <!-- Tab 1: General Settings -->
+      <div class="settings-tab-content active" id="settingsTabGeneral">
+        <!-- Profile Section -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">Profil</h3>
+          <div class="modal-row">
+            <div class="modal-field">
+              <label class="modal-label">Ad</label>
+              <input class="modal-input" type="text" id="settingsFirstName" placeholder="Adınız..." />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Soyad</label>
+              <input class="modal-input" type="text" id="settingsLastName" placeholder="Soyadınız..." />
+            </div>
           </div>
-          <div class="modal-field">
-            <label class="modal-label">Soyad</label>
-            <input class="modal-input" type="text" id="settingsLastName" placeholder="Soyadınız..." />
+        </div>
+
+        <div class="modal-separator"></div>
+
+        <!-- Command Aliases Section -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">Komut Özelleştirme</h3>
+          <p class="settings-hint">Varsayılan komutlara özel takma adlar verin. Örneğin <kbd>:mv</kbd> yerine <kbd>:taşı</kbd> kullanabilirsiniz.</p>
+          <div class="alias-list" id="aliasListContainer">
+            <!-- Rendered by JS -->
+          </div>
+          <div class="alias-add-row">
+            <input class="modal-input alias-input" type="text" id="newAliasFrom" placeholder="Takma ad (ör: :taşı)" />
+            <span class="alias-arrow">→</span>
+            <input class="modal-input alias-input" type="text" id="newAliasTo" placeholder="Orijinal komut (ör: :mv)" />
+            <button class="alias-add-btn" id="addAliasBtn" title="Ekle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="modal-separator"></div>
-
-      <!-- Command Aliases Section -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">Komut Özelleştirme</h3>
-        <p class="settings-hint">Varsayılan komutlara özel takma adlar verin. Örneğin <kbd>:mv</kbd> yerine <kbd>:taşı</kbd> kullanabilirsiniz.</p>
-        <div class="alias-list" id="aliasListContainer">
-          <!-- Rendered by JS -->
-        </div>
-        <div class="alias-add-row">
-          <input class="modal-input alias-input" type="text" id="newAliasFrom" placeholder="Takma ad (ör: :taşı)" />
-          <span class="alias-arrow">→</span>
-          <input class="modal-input alias-input" type="text" id="newAliasTo" placeholder="Orijinal komut (ör: :mv)" />
-          <button class="alias-add-btn" id="addAliasBtn" title="Ekle">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+      <!-- Tab 2: AI Settings -->
+      <div class="settings-tab-content" id="settingsTabAi">
+        <div class="settings-section">
+          <h3 class="settings-section-title">AI Sağlayıcı Ayarları</h3>
+          <p class="settings-hint">AI destekli görev oluşturma için kullanmak istediğiniz servisi seçin ve API anahtarını girin.</p>
+          
+          <div class="modal-field">
+            <label class="modal-label">Sağlayıcı (Provider)</label>
+            <select class="modal-select" id="settingsAiProvider">
+              <option value="gemini">Google Gemini</option>
+              <option value="openai">OpenAI (ChatGPT)</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </div>
+          
+          <div class="modal-field" style="margin-top: 12px;">
+            <label class="modal-label">Model</label>
+            <select class="modal-select" id="settingsAiModel">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+          
+          <div class="modal-field" style="margin-top: 12px;">
+            <label class="modal-label">API Anahtarı (API Key)</label>
+            <div style="display: flex; gap: 8px; align-items: center; position: relative;">
+              <input class="modal-input" type="password" id="settingsAiApiKey" placeholder="API anahtarınızı buraya yapıştırın..." style="padding-right: 40px; flex: 1;" />
+              <button type="button" class="btn-toggle-password" id="settingsAiToggleApiKey" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-400); cursor: pointer;" title="Göster/Gizle">
+                👁️
+              </button>
+            </div>
+          </div>
+          
+          <div class="modal-field" style="margin-top: 16px; display: flex; gap: 12px; align-items: center;">
+            <button type="button" class="sync-action-btn" id="settingsAiTestBtn" style="flex: none; padding: 8px 16px;">
+              Bağlantıyı Test Et
+            </button>
+            <span id="settingsAiTestResult" style="font-size: 13px; font-weight: 500;"></span>
+          </div>
         </div>
       </div>
     </div>
