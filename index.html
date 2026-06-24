@@ -502,7 +502,91 @@
     <div class="modal-footer">
       <div></div>
       <div class="modal-footer-right">
-        <button class="modal-btn-save" id="welcomeSave">Başlayalım</button>
+        <button class="modal-btn-save" id="welcomeSave">Devam</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Onboarding Modal ───────────────────────────────── -->
+<div class="modal-overlay" id="onboardingModal">
+  <div class="modal-container modal-onboarding">
+    <div class="onboarding-content">
+
+      <!-- Step 1: Proje Oluşturma -->
+      <div class="onboarding-step active" data-step="1">
+        <div class="onboarding-step-icon">📁</div>
+        <h2 class="onboarding-step-title">Proje Oluşturun</h2>
+        <p class="onboarding-step-desc">Sol paneldeki <strong>"New Project"</strong> butonuna tıklayarak yeni bir proje oluşturun. Şablon seçin, isim verin ve bir renk belirleyin.</p>
+        <div class="onboarding-visual">
+          <div class="onboarding-mock-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Project
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Görev Ekleme -->
+      <div class="onboarding-step" data-step="2">
+        <div class="onboarding-step-icon">✏️</div>
+        <h2 class="onboarding-step-title">Görev Ekleyin</h2>
+        <p class="onboarding-step-desc">Projenize girdikten sonra <strong>Backlog</strong> alanının altındaki <strong>"+ Add Task"</strong> butonuna tıklayarak veya komut satırına yazarak görev ekleyin.</p>
+        <div class="onboarding-visual">
+          <div class="onboarding-mock-cmd">
+            <span class="onboarding-cmd-prompt">▸</span>
+            <span class="onboarding-cmd-text">API dokümantasyonunu güncelle</span>
+          </div>
+          <div class="onboarding-mock-hint">Enter'a basarak görev oluşturun</div>
+        </div>
+      </div>
+
+      <!-- Step 3: Komut Satırı -->
+      <div class="onboarding-step" data-step="3">
+        <div class="onboarding-step-icon">⌨️</div>
+        <h2 class="onboarding-step-title">Komutları Kullanın</h2>
+        <p class="onboarding-step-desc">Komut satırına <strong>:</strong> ile başlayan komutlar yazarak hızlıca işlem yapın. Kullanılabilir komutlar:</p>
+        <div class="onboarding-visual">
+          <div class="onboarding-cmd-list">
+            <div class="onboarding-cmd-item"><code>:mv</code> <span>Görevi taşı</span></div>
+            <div class="onboarding-cmd-item"><code>:done</code> <span>Görevi tamamla</span></div>
+            <div class="onboarding-cmd-item"><code>:del</code> <span>Görevi sil</span></div>
+            <div class="onboarding-cmd-item"><code>:proj</code> <span>Yeni proje oluştur</span></div>
+            <div class="onboarding-cmd-item"><code>:col</code> <span>Kolon ekle</span></div>
+            <div class="onboarding-cmd-item"><code>/help</code> <span>Tüm komutları gör</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Remote Sync -->
+      <div class="onboarding-step" data-step="4">
+        <div class="onboarding-step-icon">🔄</div>
+        <h2 class="onboarding-step-title">Takımınızla Senkronize Edin</h2>
+        <p class="onboarding-step-desc">Sol panelin altındaki <strong>"Remote Sync"</strong> butonuna tıklayarak bir Taskey sunucusuna bağlanabilirsiniz. Tüm verileriniz önce cihazınızda saklanır — çevrimdışı da çalışabilirsiniz.</p>
+        <div class="onboarding-visual">
+          <div class="onboarding-sync-mock">
+            <div class="onboarding-sync-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </div>
+            <span>Remote Sync → Sunucu + Anahtar ile bağlan</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Step Indicators -->
+    <div class="onboarding-indicators">
+      <button class="onboarding-dot active" data-dot="1"></button>
+      <button class="onboarding-dot" data-dot="2"></button>
+      <button class="onboarding-dot" data-dot="3"></button>
+      <button class="onboarding-dot" data-dot="4"></button>
+    </div>
+
+    <div class="modal-footer">
+      <button class="modal-btn-cancel onboarding-prev" id="onboardingPrev" style="visibility: hidden;">Geri</button>
+      <div class="onboarding-step-counter"><span id="onboardingCurrent">1</span> / 4</div>
+      <div class="modal-footer-right">
+        <button class="modal-btn-save" id="onboardingNext">İleri</button>
       </div>
     </div>
   </div>
@@ -518,37 +602,87 @@
       </button>
     </div>
     <div class="modal-body">
-      <!-- Profile Section -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">Profil</h3>
-        <div class="modal-row">
-          <div class="modal-field">
-            <label class="modal-label">Ad</label>
-            <input class="modal-input" type="text" id="settingsFirstName" placeholder="Adınız..." />
+      <!-- Settings Tabs Header -->
+      <div class="settings-tabs">
+        <button class="settings-tab-btn active" data-tab="general" type="button">⚙️ Genel</button>
+        <button class="settings-tab-btn" data-tab="ai" type="button">🤖 AI Asistan</button>
+      </div>
+
+      <!-- Tab 1: General Settings -->
+      <div class="settings-tab-content active" id="settingsTabGeneral">
+        <!-- Profile Section -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">Profil</h3>
+          <div class="modal-row">
+            <div class="modal-field">
+              <label class="modal-label">Ad</label>
+              <input class="modal-input" type="text" id="settingsFirstName" placeholder="Adınız..." />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Soyad</label>
+              <input class="modal-input" type="text" id="settingsLastName" placeholder="Soyadınız..." />
+            </div>
           </div>
-          <div class="modal-field">
-            <label class="modal-label">Soyad</label>
-            <input class="modal-input" type="text" id="settingsLastName" placeholder="Soyadınız..." />
+        </div>
+
+        <div class="modal-separator"></div>
+
+        <!-- Command Aliases Section -->
+        <div class="settings-section">
+          <h3 class="settings-section-title">Komut Özelleştirme</h3>
+          <p class="settings-hint">Varsayılan komutlara özel takma adlar verin. Örneğin <kbd>:mv</kbd> yerine <kbd>:taşı</kbd> kullanabilirsiniz.</p>
+          <div class="alias-list" id="aliasListContainer">
+            <!-- Rendered by JS -->
+          </div>
+          <div class="alias-add-row">
+            <input class="modal-input alias-input" type="text" id="newAliasFrom" placeholder="Takma ad (ör: :taşı)" />
+            <span class="alias-arrow">→</span>
+            <input class="modal-input alias-input" type="text" id="newAliasTo" placeholder="Orijinal komut (ör: :mv)" />
+            <button class="alias-add-btn" id="addAliasBtn" title="Ekle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="modal-separator"></div>
-
-      <!-- Command Aliases Section -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">Komut Özelleştirme</h3>
-        <p class="settings-hint">Varsayılan komutlara özel takma adlar verin. Örneğin <kbd>:mv</kbd> yerine <kbd>:taşı</kbd> kullanabilirsiniz.</p>
-        <div class="alias-list" id="aliasListContainer">
-          <!-- Rendered by JS -->
-        </div>
-        <div class="alias-add-row">
-          <input class="modal-input alias-input" type="text" id="newAliasFrom" placeholder="Takma ad (ör: :taşı)" />
-          <span class="alias-arrow">→</span>
-          <input class="modal-input alias-input" type="text" id="newAliasTo" placeholder="Orijinal komut (ör: :mv)" />
-          <button class="alias-add-btn" id="addAliasBtn" title="Ekle">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+      <!-- Tab 2: AI Settings -->
+      <div class="settings-tab-content" id="settingsTabAi">
+        <div class="settings-section">
+          <h3 class="settings-section-title">AI Sağlayıcı Ayarları</h3>
+          <p class="settings-hint">AI destekli görev oluşturma için kullanmak istediğiniz servisi seçin ve API anahtarını girin.</p>
+          
+          <div class="modal-field">
+            <label class="modal-label">Sağlayıcı (Provider)</label>
+            <select class="modal-select" id="settingsAiProvider">
+              <option value="gemini">Google Gemini</option>
+              <option value="openai">OpenAI (ChatGPT)</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </div>
+          
+          <div class="modal-field" style="margin-top: 12px;">
+            <label class="modal-label">Model</label>
+            <select class="modal-select" id="settingsAiModel">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+          
+          <div class="modal-field" style="margin-top: 12px;">
+            <label class="modal-label">API Anahtarı (API Key)</label>
+            <div style="display: flex; gap: 8px; align-items: center; position: relative;">
+              <input class="modal-input" type="password" id="settingsAiApiKey" placeholder="API anahtarınızı buraya yapıştırın..." style="padding-right: 40px; flex: 1;" />
+              <button type="button" class="btn-toggle-password" id="settingsAiToggleApiKey" style="position: absolute; right: 8px; background: none; border: none; color: var(--text-400); cursor: pointer;" title="Göster/Gizle">
+                👁️
+              </button>
+            </div>
+          </div>
+          
+          <div class="modal-field" style="margin-top: 16px; display: flex; gap: 12px; align-items: center;">
+            <button type="button" class="sync-action-btn" id="settingsAiTestBtn" style="flex: none; padding: 8px 16px;">
+              Bağlantıyı Test Et
+            </button>
+            <span id="settingsAiTestResult" style="font-size: 13px; font-weight: 500;"></span>
+          </div>
         </div>
       </div>
     </div>
