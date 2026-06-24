@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { extractJson, generateTasks, testConnection, decomposeSingleTask } from "../src/ai/ai-service";
+import { extractJson, generateTasks, testConnection, decomposeSingleTask, analyzeProject } from "../src/ai/ai-service";
 
 // Mock OpenAI
 vi.mock("openai", () => {
@@ -12,6 +12,25 @@ vi.mock("openai", () => {
     if (args.messages && args.messages[0] && args.messages[0].content === "Ping") {
       return Promise.resolve({
         choices: [{ message: { content: "Pong" } }]
+      });
+    }
+    // If it is a project analysis/audit prompt
+    if (args.messages && args.messages[0] && args.messages[0].content.includes("Proje Adı:")) {
+      return Promise.resolve({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                contextScore: 85,
+                generalSummary: "Genel proje özeti.",
+                recommendations: [
+                  { title: "İyileştirme", desc: "Açıklama" }
+                ],
+                workflowOptimization: "İş akışı önerisi."
+              })
+            }
+          }
+        ]
       });
     }
     // If it is a single task decomposition prompt
@@ -190,6 +209,28 @@ describe("ai-service", () => {
       expect(result[0].title).toBe("Micro Task 1");
       expect(result[0].priority).toBe("low");
       expect(result[0].status).toBe("in-progress");
+    });
+  });
+
+  describe("analyzeProject", () => {
+    it("should successfully audit project tasks via OpenAI", async () => {
+      const payload = {
+        projectId: "proj-1",
+        provider: "openai" as const,
+        apiKey: "sk-test",
+        model: "gpt-4o",
+        taskScope: "",
+        expectedOutcome: "",
+        startDate: "",
+        endDate: ""
+      };
+
+      const result = await analyzeProject(payload, "Proje Adı: Test");
+      expect(result.contextScore).toBe(85);
+      expect(result.generalSummary).toBe("Genel proje özeti.");
+      expect(result.workflowOptimization).toBe("İş akışı önerisi.");
+      expect(result.recommendations.length).toBe(1);
+      expect(result.recommendations[0].title).toBe("İyileştirme");
     });
   });
 

@@ -115,3 +115,53 @@ Kurallar:
   ]
 }`;
 }
+
+export interface ProjectSummaryPayload {
+  projectName: string;
+  columns: { id: string; label: string }[];
+  tasks: {
+    title: string;
+    description: string;
+    status: string;
+    priority: string;
+    tags: string[];
+  }[];
+}
+
+export function buildProjectSummaryPrompt(payload: ProjectSummaryPayload): string {
+  const tasksJson = JSON.stringify(payload.tasks.map(t => ({
+    title: t.title,
+    description: t.description,
+    status: t.status,
+    priority: t.priority,
+    tags: t.tags
+  })), null, 2);
+
+  return `Sen son derece deneyimli bir Çevik Süreç (Agile/Scrum) ve Yazılım Proje Yöneticisi AI Asistanısın.
+Aşağıda verilen projedeki mevcut görevlerin (task) kalitesini, bağlam uyumunu (context alignment), detay seviyelerini ve iş akışı verimliliğini analiz etmen gerekiyor.
+
+Proje Adı: ${payload.projectName}
+Mevcut Görevler:
+${tasksJson}
+
+Lütfen projedeki bu görevleri analiz ederek aşağıdaki yapıda SADECE geçerli bir JSON çıktısı üret:
+
+1. "contextScore": 0 ile 100 arasında bir puan. Görevlerin ne kadar net tanımlandığını, açıklamaların yeterliliğini ve projenin genel olarak ne kadar olgun bir bağlamda olduğunu temsil etsin.
+2. "generalSummary": Projenin genel durumunun, görevlerin netliğinin ve olgunluğunun 3-4 cümlelik bir özeti.
+3. "recommendations": Görev kalitesini artırmak için öneriler listesi. Örneğin: "X görevinin açıklaması çok yetersiz, başarı kriterleri (Definition of Done) eklenmeli", "Y ve Z görevleri çok büyük, bölünmeli" veya "Tarih atamaları çakışıyor" gibi. Her önerinin bir "title" (başlık) ve "desc" (detay) alanı olmalıdır.
+4. "workflowOptimization": İş akışını hızlandıracak veya verimliliği artıracak süreç önerileri. Hangi görevlerin birbiriyle bağımlı olduğu, hangisinden başlanırsa projenin daha hızlı ilerleyeceği veya tıkanıklık (bottleneck) olabilecek durumlar.
+
+Kurallar:
+- Çıktı SADECE geçerli bir JSON objesi olmalıdır. Kesinlikle markdown kod blokları (\`\`\`) dışında veya içinde başka hiçbir açıklama ekleme.
+
+Çıktı Şeması:
+{
+  "contextScore": 75,
+  "generalSummary": "Genel özet...",
+  "recommendations": [
+    { "title": "Başlık", "desc": "Detaylı açıklama..." }
+  ],
+  "workflowOptimization": "İş akışı önerisi..."
+}`;
+}
+

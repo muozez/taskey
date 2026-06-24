@@ -292,3 +292,49 @@ export async function decomposeSingleTask(payload: DecomposeSingleTaskPayload): 
   }
   throw new Error("Retry failed");
 }
+
+export interface ProjectAnalysisResult {
+  contextScore: number;
+  generalSummary: string;
+  recommendations: { title: string; desc: string }[];
+  workflowOptimization: string;
+}
+
+export async function analyzeProject(
+  payload: AiGeneratePayload,
+  prompt: string
+): Promise<ProjectAnalysisResult> {
+  let currentPrompt = prompt;
+  let attempt = 0;
+  const maxRetries = 2;
+  const delay = 1000;
+
+  while (attempt <= maxRetries) {
+    try {
+      const rawResponse = await performRequest(payload, currentPrompt);
+      const parsed = extractJson(rawResponse);
+
+      if (!parsed || typeof parsed.contextScore !== 'number') {
+        throw new Error("AI yanıtı beklenen şemaya uymuyor (contextScore bulunamadı)");
+      }
+
+      return {
+        contextScore: Number(parsed.contextScore) || 0,
+        generalSummary: String(parsed.generalSummary || "").trim(),
+        recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+        workflowOptimization: String(parsed.workflowOptimization || "").trim()
+      };
+    } catch (err: any) {
+      if (attempt === maxRetries) {
+        throw err;
+      }
+      attempt++;
+      if (err.message && (err.message.includes("JSON") || err.message.includes("şemaya uymuyor"))) {
+        currentPrompt = `${prompt}\n\nÖNEMLİ UYARI: Önceki denemede geçersiz JSON ürettin veya JSON yapısı şemaya uymadı. Lütfen SADECE geçerli ve düzgün biçimlendirilmiş bir JSON objesi döndürdüğünden emin ol. Hata detayı: ${err.message}`;
+      }
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
+    }
+  }
+  throw new Error("Retry failed");
+}
+
